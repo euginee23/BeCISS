@@ -33,21 +33,21 @@
 
                 @if(auth()->user()->isAdmin())
                 <flux:sidebar.group :heading="__('Administration')" class="grid">
-                    <flux:sidebar.item icon="user-group" :href="route('dashboard')" :current="request()->routeIs('users.*')" wire:navigate>
-                        {{ __('Users') }}
+                    <flux:sidebar.item icon="building-office-2" :href="route('admin.settings.barangay')" :current="request()->routeIs('admin.settings.barangay')" wire:navigate>
+                        {{ __('Barangay Settings') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="chart-bar" :href="route('dashboard')" :current="request()->routeIs('reports.*')" wire:navigate>
-                        {{ __('Reports') }}
+                    <flux:sidebar.item icon="user-group" :href="route('admin.officials.index')" :current="request()->routeIs('admin.officials.index')" wire:navigate>
+                        {{ __('Officials') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
                 @endif
 
                 @if(auth()->user()->isResident())
                 <flux:sidebar.group :heading="__('My Services')" class="grid">
-                    <flux:sidebar.item icon="document-text" :href="route('dashboard')" :current="request()->routeIs('my-certificates.*')" wire:navigate>
+                    <flux:sidebar.item icon="document-text" :href="route('resident.certificates.index')" :current="request()->routeIs('resident.certificates.*')" wire:navigate>
                         {{ __('My Certificates') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="calendar" :href="route('dashboard')" :current="request()->routeIs('my-appointments.*')" wire:navigate>
+                    <flux:sidebar.item icon="calendar" :href="route('resident.appointments.index')" :current="request()->routeIs('resident.appointments.*')" wire:navigate>
                         {{ __('My Appointments') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>

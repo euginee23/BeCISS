@@ -1,11 +1,28 @@
 <?php
 
+use App\Models\BarangayProfile;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'welcome')->name('home');
+Route::get('/', function () {
+    return view('welcome', [
+        'barangay' => BarangayProfile::first(),
+    ]);
+})->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::view('dashboard', 'dashboard')->name('dashboard');
+    Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
+
+    // Admin-only routes
+    Route::middleware(['role:admin'])->group(function () {
+        Route::livewire('admin/settings', 'pages::admin.settings.barangay')->name('admin.settings.barangay');
+        Route::livewire('admin/officials', 'pages::admin.officials.index')->name('admin.officials.index');
+    });
+
+    // Resident-only routes
+    Route::middleware(['role:resident'])->group(function () {
+        Route::livewire('my/certificates', 'pages::resident.certificates.index')->name('resident.certificates.index');
+        Route::livewire('my/appointments', 'pages::resident.appointments.index')->name('resident.appointments.index');
+    });
 
     // Management Routes (admin and staff only)
     Route::middleware(['role:admin,staff'])->group(function () {

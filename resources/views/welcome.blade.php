@@ -63,13 +63,17 @@
                                 </svg>
                             </a>
                         @else
-                            <a href="{{ route('login') }}" class="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">
-                                Log in
-                            </a>
+                            <flux:modal.trigger name="login">
+                                <button class="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer">
+                                    Log in
+                                </button>
+                            </flux:modal.trigger>
                             @if (Route::has('register'))
-                                <a href="{{ route('register') }}" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 rounded-lg shadow-lg shadow-emerald-500/20 transition-all hover:shadow-xl hover:shadow-emerald-500/30">
-                                    Register
-                                </a>
+                                <flux:modal.trigger name="register">
+                                    <button class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 rounded-lg shadow-lg shadow-emerald-500/20 transition-all hover:shadow-xl hover:shadow-emerald-500/30 cursor-pointer">
+                                        Register
+                                    </button>
+                                </flux:modal.trigger>
                             @endif
                         @endauth
                     </div>
@@ -112,15 +116,19 @@
                             </svg>
                         </a>
                     @else
-                        <a href="{{ route('register') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 rounded-xl shadow-xl shadow-emerald-500/20 transition-all hover:shadow-2xl hover:shadow-emerald-500/30 hover:-translate-y-0.5">
-                            Get Started
-                            <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                            </svg>
-                        </a>
-                        <a href="{{ route('login') }}" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-xl shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
-                            Sign In
-                        </a>
+                        <flux:modal.trigger name="register">
+                            <button class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 rounded-xl shadow-xl shadow-emerald-500/20 transition-all hover:shadow-2xl hover:shadow-emerald-500/30 hover:-translate-y-0.5 cursor-pointer">
+                                Get Started
+                                <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                            </button>
+                        </flux:modal.trigger>
+                        <flux:modal.trigger name="login">
+                            <button class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:border-emerald-300 dark:hover:border-emerald-700 rounded-xl shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 cursor-pointer">
+                                Sign In
+                            </button>
+                        </flux:modal.trigger>
                     @endauth
                 </div>
             </div>
@@ -329,12 +337,14 @@
                         Join BeCISS today and enjoy hassle-free access to barangay services from anywhere, anytime.
                     </p>
                     @guest
-                        <a href="{{ route('register') }}" class="inline-flex items-center gap-2 px-8 py-4 text-base font-semibold text-emerald-700 bg-white hover:bg-emerald-50 rounded-xl shadow-xl transition-all hover:shadow-2xl hover:-translate-y-0.5">
-                            Create Your Account
-                            <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                            </svg>
-                        </a>
+                        <flux:modal.trigger name="register">
+                            <button class="inline-flex items-center gap-2 px-8 py-4 text-base font-semibold text-emerald-700 bg-white hover:bg-emerald-50 rounded-xl shadow-xl transition-all hover:shadow-2xl hover:-translate-y-0.5 cursor-pointer">
+                                Create Your Account
+                                <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                            </button>
+                        </flux:modal.trigger>
                     @endguest
                 </div>
             </div>
@@ -365,8 +375,16 @@
                         <li><a href="#features" class="text-sm text-zinc-400 hover:text-emerald-400 transition-colors">Features</a></li>
                         <li><a href="#services" class="text-sm text-zinc-400 hover:text-emerald-400 transition-colors">Services</a></li>
                         @guest
-                            <li><a href="{{ route('login') }}" class="text-sm text-zinc-400 hover:text-emerald-400 transition-colors">Sign In</a></li>
-                            <li><a href="{{ route('register') }}" class="text-sm text-zinc-400 hover:text-emerald-400 transition-colors">Register</a></li>
+                            <li>
+                                <flux:modal.trigger name="login">
+                                    <button class="text-sm text-zinc-400 hover:text-emerald-400 transition-colors cursor-pointer">Sign In</button>
+                                </flux:modal.trigger>
+                            </li>
+                            <li>
+                                <flux:modal.trigger name="register">
+                                    <button class="text-sm text-zinc-400 hover:text-emerald-400 transition-colors cursor-pointer">Register</button>
+                                </flux:modal.trigger>
+                            </li>
                         @endguest
                     </ul>
                 </div>
@@ -375,16 +393,35 @@
                 <div>
                     <h4 class="text-sm font-semibold uppercase tracking-wider text-zinc-400 mb-4">Contact</h4>
                     <ul class="space-y-3 text-sm text-zinc-400">
-                        <li>Barangay Hall</li>
-                        <li>Your Municipality, Province</li>
-                        <li>contact@beciss.local</li>
+                        <li>{{ $barangay?->barangay_name ?? 'Barangay Hall' }}</li>
+                        @if($barangay?->address)
+                            <li>{{ $barangay->address }}</li>
+                        @endif
+                        @if($barangay?->municipality || $barangay?->province)
+                            <li>{{ collect([$barangay?->municipality, $barangay?->province])->filter()->implode(', ') }}</li>
+                        @endif
+                        @if($barangay?->phone)
+                            <li>
+                                <a href="tel:{{ $barangay->phone }}" class="hover:text-emerald-400 transition-colors">{{ $barangay->phone }}</a>
+                            </li>
+                        @endif
+                        @if($barangay?->email)
+                            <li>
+                                <a href="mailto:{{ $barangay->email }}" class="hover:text-emerald-400 transition-colors">{{ $barangay->email }}</a>
+                            </li>
+                        @endif
+                        @if(!$barangay || (!$barangay->address && !$barangay->phone && !$barangay->email))
+                            <li>Barangay Hall</li>
+                            <li>Municipality, Province</li>
+                            <li>contact@barangay.gov.ph</li>
+                        @endif
                     </ul>
                 </div>
             </div>
 
             <div class="border-t border-zinc-800 pt-8 text-center">
                 <p class="text-sm text-zinc-500">
-                    &copy; {{ date('Y') }} BeCISS. All rights reserved.
+                     CodeHub.Site | BeCISS. All rights reserved. &copy; {{ date('Y') }}
                 </p>
             </div>
         </div>
@@ -418,5 +455,9 @@
             }, { passive: true });
         })();
     </script>
+
+    @livewire('auth.login-modal')
+    @livewire('auth.register-modal')
+    @fluxScripts
 </body>
 </html>
