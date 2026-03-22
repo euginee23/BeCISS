@@ -6,10 +6,10 @@ beforeEach(function () {
     $this->skipUnlessFortifyFeature(Features::registration());
 });
 
-test('registration screen can be rendered', function () {
+test('registration screen redirects to home', function () {
     $response = $this->get(route('register'));
 
-    $response->assertOk();
+    $response->assertRedirect(route('home'));
 });
 
 test('new users can register', function () {
