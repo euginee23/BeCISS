@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\EnsureResidentApproved;
+use App\Http\Middleware\EnsureUserHasRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,7 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+            'role' => EnsureUserHasRole::class,
+            'resident.approved' => EnsureResidentApproved::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

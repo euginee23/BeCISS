@@ -32,7 +32,32 @@ class ResidentFactory extends Factory
             'occupation' => fake()->optional(0.7)->jobTitle(),
             'monthly_income' => fake()->optional(0.6)->randomFloat(2, 5000, 100000),
             'is_voter' => fake()->boolean(70),
+            'status' => 'approved',
+            'approved_at' => now(),
         ];
+    }
+
+    /**
+     * Set status to pending.
+     */
+    public function pending(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'pending',
+            'approved_at' => null,
+        ]);
+    }
+
+    /**
+     * Set status to rejected with a reason.
+     */
+    public function rejected(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'rejected',
+            'rejection_reason' => 'Incomplete or invalid information provided.',
+            'approved_at' => null,
+        ]);
     }
 
     /**

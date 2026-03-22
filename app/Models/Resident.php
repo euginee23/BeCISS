@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\ResidentFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,6 +38,9 @@ class Resident extends Model
         'is_voter',
         'household_head_id',
         'profile_photo_path',
+        'status',
+        'rejection_reason',
+        'approved_at',
     ];
 
     /**
@@ -51,6 +55,7 @@ class Resident extends Model
             'monthly_income' => 'decimal:2',
             'is_voter' => 'boolean',
             'years_of_residency' => 'integer',
+            'approved_at' => 'datetime',
         ];
     }
 
@@ -125,5 +130,38 @@ class Resident extends Model
     public function getAgeAttribute(): int
     {
         return $this->birthdate->age;
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === 'approved';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
+    }
+
+    /**
+     * @param  Builder<Resident>  $query
+     * @return Builder<Resident>
+     */
+    public function scopeApproved(Builder $query): Builder
+    {
+        return $query->where('status', 'approved');
+    }
+
+    /**
+     * @param  Builder<Resident>  $query
+     * @return Builder<Resident>
+     */
+    public function scopePending(Builder $query): Builder
+    {
+        return $query->where('status', 'pending');
     }
 }
