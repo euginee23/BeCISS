@@ -9,6 +9,15 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
+// Redirect login and register routes to home page (modals will handle auth)
+Route::get('/login', function () {
+    return redirect()->route('home');
+})->name('login');
+
+Route::get('/register', function () {
+    return redirect()->route('home');
+})->name('register');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('pending-approval', 'pages::pending-approval')->name('pending-approval');
 

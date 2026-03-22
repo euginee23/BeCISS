@@ -95,3 +95,12 @@ select:focus[data-flux-control] {
 /* \[:where(&)\]:size-4 {
     @apply size-4;
 } */
+
+/* Modal backdrop blur styling */
+dialog[data-flux-modal]::backdrop {
+    @apply bg-zinc-900/60 backdrop-blur-xl;
+}
+
+dialog[data-flux-modal]:is(.dark *)::backdrop {
+    @apply bg-zinc-950/80 backdrop-blur-xl;
+}
