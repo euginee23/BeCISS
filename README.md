@@ -81,7 +81,7 @@ composer lint
 
 | Table          | Description                                      |
 |----------------|--------------------------------------------------|
-| `users`        | Authenticated accounts with `admin/staff/resident` roles |
+| `users`        | Authenticate `admin/staff/resident` roles         |
 | `residents`    | Resident profiles with household relationships   |
 | `certificates` | Certificate requests and their processing status |
 | `appointments` | Service appointments and scheduling              |
