@@ -24,7 +24,7 @@ A web-based management system for Philippine barangay (local government unit) ad
 
 ## Requirements
 
-- PHP 8.4+
+- PHP 8.4.16+
 - Composer
 - Node.js & npm
 - A supported database (MySQL, SQLite, etc.)
