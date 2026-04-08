@@ -9,6 +9,7 @@ beforeEach(function () {
     $this->admin = User::factory()->admin()->create();
     $this->staff = User::factory()->staff()->create();
     $this->residentUser = User::factory()->resident()->create();
+    Resident::factory()->create(['user_id' => $this->residentUser->id]);
 });
 
 describe('certificates index', function () {

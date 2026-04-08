@@ -9,12 +9,12 @@ use App\Models\User;
 |--------------------------------------------------------------------------
 */
 
-test('resident without profile can access dashboard', function () {
+test('resident without profile is redirected to complete-profile', function () {
     $user = User::factory()->resident()->create();
 
     $this->actingAs($user)
         ->get(route('dashboard'))
-        ->assertOk();
+        ->assertRedirect(route('complete-profile'));
 });
 
 test('resident with pending profile is redirected to pending-approval', function () {
@@ -35,13 +35,13 @@ test('resident with approved profile can access dashboard', function () {
         ->assertOk();
 });
 
-test('resident with rejected profile can access dashboard', function () {
+test('resident with rejected profile is redirected to complete-profile', function () {
     $user = User::factory()->resident()->create();
     Resident::factory()->rejected()->create(['user_id' => $user->id]);
 
     $this->actingAs($user)
         ->get(route('dashboard'))
-        ->assertOk();
+        ->assertRedirect(route('complete-profile'));
 });
 
 test('admin users bypass resident approval middleware', function () {

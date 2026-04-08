@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CertificateDownloadController;
 use App\Models\BarangayProfile;
 use Illuminate\Support\Facades\Route;
 
@@ -20,19 +21,24 @@ Route::get('/register', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('pending-approval', 'pages::pending-approval')->name('pending-approval');
+    Route::livewire('complete-profile', 'pages::complete-profile')->name('complete-profile');
 
     Route::middleware(['resident.approved'])->group(function () {
         Route::livewire('dashboard', 'pages::dashboard')->name('dashboard');
 
+        // Certificate Download (all authenticated roles)
+        Route::get('certificates/{certificate}/download', CertificateDownloadController::class)->name('certificates.download');
+
         // Admin-only routes
         Route::middleware(['role:admin'])->group(function () {
             Route::livewire('admin/settings', 'pages::admin.settings.barangay')->name('admin.settings.barangay');
-            Route::livewire('admin/officials', 'pages::admin.officials.index')->name('admin.officials.index');
         });
 
         // Resident-only routes
         Route::middleware(['role:resident'])->group(function () {
+            Route::livewire('my/certificates/create', 'pages::resident.certificates.create')->name('resident.certificates.create');
             Route::livewire('my/certificates', 'pages::resident.certificates.index')->name('resident.certificates.index');
+            Route::livewire('my/appointments/create', 'pages::resident.appointments.create')->name('resident.appointments.create');
             Route::livewire('my/appointments', 'pages::resident.appointments.index')->name('resident.appointments.index');
         });
 

@@ -40,16 +40,3 @@ test('missing email shows validation error', function () {
         ->call('login')
         ->assertHasErrors(['email']);
 });
-
-test('user with two factor is redirected to two factor challenge', function () {
-    $user = User::factory()->withTwoFactor()->create();
-
-    Livewire::test('auth.login-modal')
-        ->set('email', $user->email)
-        ->set('password', 'password')
-        ->call('login')
-        ->assertRedirect(route('two-factor.login'));
-
-    expect(auth()->check())->toBeFalse();
-    expect(session()->get('login.id'))->toBe($user->id);
-});

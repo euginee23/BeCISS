@@ -12,9 +12,9 @@ class EnsureResidentApproved
      * Handle an incoming request.
      *
      * Ensures resident-role users have an approved profile before accessing protected routes.
-     * - No resident record → allow through (first-login info modal on dashboard)
+     * - No resident record → redirect to complete-profile page
      * - Pending → redirect to pending-approval page
-     * - Rejected → allow through (can resubmit on dashboard)
+     * - Rejected → redirect to complete-profile page (can resubmit)
      * - Approved → allow through
      *
      * @param  Closure(Request): (Response)  $next
@@ -29,8 +29,12 @@ class EnsureResidentApproved
 
         $resident = $user->resident;
 
-        if (! $resident) {
-            return $next($request);
+        if (! $resident || $resident->isRejected()) {
+            if ($request->routeIs('complete-profile')) {
+                return $next($request);
+            }
+
+            return redirect()->route('complete-profile');
         }
 
         if ($resident->isPending()) {

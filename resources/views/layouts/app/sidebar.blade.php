@@ -36,9 +36,6 @@
                     <flux:sidebar.item icon="building-office-2" :href="route('admin.settings.barangay')" :current="request()->routeIs('admin.settings.barangay')" wire:navigate>
                         {{ __('Barangay Settings') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="user-group" :href="route('admin.officials.index')" :current="request()->routeIs('admin.officials.index')" wire:navigate>
-                        {{ __('Officials') }}
-                    </flux:sidebar.item>
                 </flux:sidebar.group>
                 @endif
 

@@ -15,9 +15,16 @@ class extends Component {
     public bool $showProcessModal = false;
     public bool $showRejectModal = false;
     public bool $showCompleteModal = false;
+    public bool $showExportModal = false;
 
     public string $rejectionReason = '';
     public string $orNumber = '';
+
+    public string $dateOfIssuance = '';
+    public string $ctcNo = '';
+    public string $ctcPlaceIssued = '';
+    public string $ctcDateIssued = '';
+    public string $exportFormat = 'docx';
 
     public function mount(Certificate $certificate): void
     {
@@ -44,7 +51,7 @@ class extends Component {
         $this->certificate->refresh();
     }
 
-    public function showCompleteModal(): void
+    public function openCompleteModal(): void
     {
         $this->showCompleteModal = true;
     }
@@ -66,7 +73,7 @@ class extends Component {
         $this->certificate->refresh();
     }
 
-    public function showRejectModal(): void
+    public function openRejectModal(): void
     {
         $this->showRejectModal = true;
     }
@@ -85,6 +92,39 @@ class extends Component {
 
         $this->showRejectModal = false;
         $this->certificate->refresh();
+    }
+
+    public function openExportModal(): void
+    {
+        $this->dateOfIssuance = now()->format('Y-m-d');
+        $this->ctcNo = '';
+        $this->ctcPlaceIssued = '';
+        $this->ctcDateIssued = '';
+        $this->exportFormat = 'docx';
+        $this->showExportModal = true;
+    }
+
+    public function downloadCertificate(): void
+    {
+        $this->validate([
+            'dateOfIssuance' => ['required', 'date'],
+            'ctcNo' => ['nullable', 'string', 'max:100'],
+            'ctcPlaceIssued' => ['nullable', 'string', 'max:200'],
+            'ctcDateIssued' => ['nullable', 'date'],
+            'exportFormat' => ['required', 'in:docx,pdf'],
+        ]);
+
+        $url = route('certificates.download', $this->certificate).'?'.http_build_query([
+            'format' => $this->exportFormat,
+            'date_of_issuance' => $this->dateOfIssuance,
+            'ctc_no' => $this->ctcNo,
+            'ctc_place_issued' => $this->ctcPlaceIssued,
+            'ctc_date_issued' => $this->ctcDateIssued,
+        ]);
+
+        $this->showExportModal = false;
+
+        $this->dispatch('download-certificate', url: $url);
     }
 }; ?>
 
@@ -114,22 +154,28 @@ class extends Component {
 
         {{-- Action Buttons --}}
         <div class="flex gap-2">
+            @if ($certificate->type === 'certificate_of_residency')
+                <flux:button variant="primary" icon="arrow-down-tray" wire:click="openExportModal">
+                    {{ __('Download') }}
+                </flux:button>
+            @endif
+
             @if ($certificate->status === 'pending')
                 <flux:button variant="primary" wire:click="startProcessing">
                     {{ __('Start Processing') }}
                 </flux:button>
-                <flux:button variant="danger" wire:click="showRejectModal">
+                <flux:button variant="danger" wire:click="openRejectModal">
                     {{ __('Reject') }}
                 </flux:button>
             @elseif ($certificate->status === 'processing')
                 <flux:button variant="primary" wire:click="markReadyForPickup">
                     {{ __('Mark Ready for Pickup') }}
                 </flux:button>
-                <flux:button variant="danger" wire:click="showRejectModal">
+                <flux:button variant="danger" wire:click="openRejectModal">
                     {{ __('Reject') }}
                 </flux:button>
             @elseif ($certificate->status === 'ready_for_pickup')
-                <flux:button variant="primary" wire:click="showCompleteModal">
+                <flux:button variant="primary" wire:click="openCompleteModal">
                     {{ __('Complete & Release') }}
                 </flux:button>
             @endif
@@ -319,4 +365,66 @@ class extends Component {
             </div>
         </div>
     </flux:modal>
+
+    {{-- Export Modal --}}
+    <flux:modal wire:model="showExportModal" class="max-w-sm">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Download Certificate') }}</flux:heading>
+                <flux:text class="mt-2">
+                    {{ __('Fill in the details below before generating the document.') }}
+                </flux:text>
+            </div>
+
+            <flux:field>
+                <flux:label>{{ __('Date of Issuance') }} <span class="text-red-500">*</span></flux:label>
+                <flux:input type="date" wire:model="dateOfIssuance" required />
+                <flux:error name="dateOfIssuance" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('CTC No.') }}</flux:label>
+                <flux:input wire:model="ctcNo" placeholder="e.g. 12345678" />
+                <flux:error name="ctcNo" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('CTC Place Issued') }}</flux:label>
+                <flux:input wire:model="ctcPlaceIssued" placeholder="e.g. Municipality of ..." />
+                <flux:error name="ctcPlaceIssued" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('CTC Date Issued') }}</flux:label>
+                <flux:input type="date" wire:model="ctcDateIssued" />
+                <flux:error name="ctcDateIssued" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Format') }}</flux:label>
+                <flux:radio.group wire:model="exportFormat">
+                    <flux:radio value="docx" label="{{ __('Word Document (.docx)') }}" />
+                    <flux:radio value="pdf" label="{{ __('PDF (.pdf)') }}" />
+                </flux:radio.group>
+                <flux:error name="exportFormat" />
+            </flux:field>
+
+            <div class="flex justify-end gap-2">
+                <flux:button variant="ghost" wire:click="$set('showExportModal', false)">
+                    {{ __('Cancel') }}
+                </flux:button>
+                <flux:button variant="primary" icon="arrow-down-tray" wire:click="downloadCertificate">
+                    {{ __('Generate & Download') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>
+
+@script
+<script>
+    $wire.on('download-certificate', ({ url }) => {
+        window.open(url, '_blank');
+    });
+</script>
+@endscript

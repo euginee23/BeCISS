@@ -6,7 +6,6 @@ use App\Models\Resident;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
-use Livewire\Attributes\Validate;
 use Livewire\Component;
 
 new
@@ -14,100 +13,6 @@ new
 #[Layout('layouts::app')]
 class extends Component
 {
-    // Resident profile form fields
-    #[Validate('required|string|max:255')]
-    public string $first_name = '';
-
-    #[Validate('nullable|string|max:255')]
-    public ?string $middle_name = '';
-
-    #[Validate('required|string|max:255')]
-    public string $last_name = '';
-
-    #[Validate('nullable|string|max:10')]
-    public ?string $suffix = '';
-
-    #[Validate('required|date|before:today')]
-    public string $birthdate = '';
-
-    #[Validate('required|in:male,female')]
-    public string $gender = '';
-
-    #[Validate('required|in:single,married,widowed,separated,divorced')]
-    public string $civil_status = 'single';
-
-    #[Validate('required|string|max:20')]
-    public string $contact_number = '';
-
-    #[Validate('required|string|max:500')]
-    public string $address = '';
-
-    #[Validate('nullable|string|max:100')]
-    public ?string $purok = '';
-
-    public bool $showProfileModal = false;
-
-    public function mount(): void
-    {
-        $user = auth()->user();
-
-        if ($user->isResident()) {
-            $resident = $user->resident;
-
-            // Auto-open modal for new residents (no profile) or rejected residents
-            if (! $resident || $resident->isRejected()) {
-                $this->showProfileModal = true;
-
-                if ($resident?->isRejected()) {
-                    $this->first_name = $resident->first_name;
-                    $this->middle_name = $resident->middle_name ?? '';
-                    $this->last_name = $resident->last_name;
-                    $this->suffix = $resident->suffix ?? '';
-                    $this->birthdate = $resident->birthdate->format('Y-m-d');
-                    $this->gender = $resident->gender;
-                    $this->civil_status = $resident->civil_status;
-                    $this->contact_number = $resident->contact_number ?? '';
-                    $this->address = $resident->address;
-                    $this->purok = $resident->purok ?? '';
-                }
-            }
-        }
-    }
-
-    public function submitProfile(): void
-    {
-        $this->validate();
-
-        $user = auth()->user();
-        $resident = $user->resident;
-
-        $data = [
-            'user_id' => $user->id,
-            'first_name' => $this->first_name,
-            'middle_name' => $this->middle_name ?: null,
-            'last_name' => $this->last_name,
-            'suffix' => $this->suffix ?: null,
-            'birthdate' => $this->birthdate,
-            'gender' => $this->gender,
-            'civil_status' => $this->civil_status,
-            'contact_number' => $this->contact_number,
-            'address' => $this->address,
-            'purok' => $this->purok ?: null,
-            'status' => 'pending',
-            'rejection_reason' => null,
-        ];
-
-        if ($resident) {
-            $resident->update($data);
-        } else {
-            Resident::create($data);
-        }
-
-        $this->showProfileModal = false;
-
-        $this->redirect(route('pending-approval'), navigate: true);
-    }
-
     #[Computed]
     public function totalResidents(): int
     {
@@ -359,49 +264,8 @@ class extends Component
 
         @php $resident = auth()->user()->resident; @endphp
 
-        {{-- Rejection banner --}}
-        @if($resident?->isRejected())
-            <div class="rounded-2xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-5">
-                <div class="flex items-start gap-4">
-                    <div class="size-10 rounded-xl bg-red-100 dark:bg-red-800/50 flex items-center justify-center shrink-0">
-                        <flux:icon name="x-circle" class="size-5 text-red-600 dark:text-red-400" />
-                    </div>
-                    <div class="flex-1">
-                        <flux:heading class="text-red-900 dark:text-red-200">Registration Not Approved</flux:heading>
-                        <flux:text class="text-red-700 dark:text-red-300 mt-1">
-                            {{ $resident->rejection_reason }}
-                        </flux:text>
-                        <flux:button variant="primary" size="sm" class="mt-3" wire:click="$set('showProfileModal', true)">
-                            Update & Resubmit
-                        </flux:button>
-                    </div>
-                </div>
-            </div>
-        @endif
-
-        @if(! $resident || $resident->isRejected())
-            {{-- Welcome card for new/rejected residents --}}
-            <div class="text-center py-8">
-                <div class="inline-flex items-center justify-center size-20 rounded-2xl bg-gradient-to-br from-emerald-100 to-emerald-200 dark:from-emerald-900/30 dark:to-emerald-800/20 mb-6">
-                    <flux:icon name="user-plus" class="size-10 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <flux:heading size="xl" class="text-zinc-900 dark:text-white">
-                    {{ __('Welcome to BeCISS!') }}
-                </flux:heading>
-                <flux:text class="mt-2 text-zinc-600 dark:text-zinc-400 max-w-md mx-auto">
-                    {{ __('Complete your resident profile to get started with barangay services like certificate requests and appointment scheduling.') }}
-                </flux:text>
-                @if(! $resident)
-                    <flux:button variant="primary" class="mt-6" wire:click="$set('showProfileModal', true)">
-                        {{ __('Complete My Profile') }}
-                    </flux:button>
-                @endif
-            </div>
-        @else
-            {{-- ===== APPROVED RESIDENT — Stats & Recent Activity ===== --}}
-
-            {{-- Stats Cards --}}
-            <div class="grid grid-cols-2 gap-4">
+        {{-- Stats Cards --}}
+        <div class="grid grid-cols-2 gap-4">
                 <div class="group relative overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 transition-all hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700">
                     <div class="absolute inset-0 bg-gradient-to-br from-amber-50 to-transparent dark:from-amber-950/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div class="relative flex flex-col gap-3">
@@ -512,106 +376,5 @@ class extends Component
                     </div>
                 @endif
             </div>
-        @endif
-
-        {{-- Profile Completion Modal --}}
-        <flux:modal wire:model="showProfileModal" class="max-w-lg" :closable="auth()->user()->resident?->isRejected() ?? true">
-            <div class="space-y-6">
-                <div>
-                    <flux:heading size="lg">{{ auth()->user()->resident?->isRejected() ? __('Update Your Information') : __('Complete Your Profile') }}</flux:heading>
-                    <flux:text class="mt-1 text-zinc-500">
-                        {{ __('Please provide your personal information for barangay registration.') }}
-                    </flux:text>
-                </div>
-
-                <form wire:submit="submitProfile" class="space-y-4">
-                    {{-- Name Fields --}}
-                    <div class="grid grid-cols-2 gap-4">
-                        <flux:field>
-                            <flux:label>{{ __('First Name') }}</flux:label>
-                            <flux:input wire:model="first_name" required />
-                            <flux:error name="first_name" />
-                        </flux:field>
-                        <flux:field>
-                            <flux:label>{{ __('Last Name') }}</flux:label>
-                            <flux:input wire:model="last_name" required />
-                            <flux:error name="last_name" />
-                        </flux:field>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <flux:field>
-                            <flux:label>{{ __('Middle Name') }}</flux:label>
-                            <flux:input wire:model="middle_name" placeholder="{{ __('Optional') }}" />
-                            <flux:error name="middle_name" />
-                        </flux:field>
-                        <flux:field>
-                            <flux:label>{{ __('Suffix') }}</flux:label>
-                            <flux:input wire:model="suffix" placeholder="{{ __('Jr., Sr., III') }}" />
-                            <flux:error name="suffix" />
-                        </flux:field>
-                    </div>
-
-                    {{-- Personal Info --}}
-                    <div class="grid grid-cols-2 gap-4">
-                        <flux:field>
-                            <flux:label>{{ __('Birthdate') }}</flux:label>
-                            <flux:input type="date" wire:model="birthdate" required />
-                            <flux:error name="birthdate" />
-                        </flux:field>
-                        <flux:field>
-                            <flux:label>{{ __('Gender') }}</flux:label>
-                            <flux:select wire:model="gender" required>
-                                <flux:select.option value="">{{ __('Select') }}</flux:select.option>
-                                <flux:select.option value="male">{{ __('Male') }}</flux:select.option>
-                                <flux:select.option value="female">{{ __('Female') }}</flux:select.option>
-                            </flux:select>
-                            <flux:error name="gender" />
-                        </flux:field>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <flux:field>
-                            <flux:label>{{ __('Civil Status') }}</flux:label>
-                            <flux:select wire:model="civil_status" required>
-                                <flux:select.option value="single">{{ __('Single') }}</flux:select.option>
-                                <flux:select.option value="married">{{ __('Married') }}</flux:select.option>
-                                <flux:select.option value="widowed">{{ __('Widowed') }}</flux:select.option>
-                                <flux:select.option value="separated">{{ __('Separated') }}</flux:select.option>
-                                <flux:select.option value="divorced">{{ __('Divorced') }}</flux:select.option>
-                            </flux:select>
-                            <flux:error name="civil_status" />
-                        </flux:field>
-                        <flux:field>
-                            <flux:label>{{ __('Contact Number') }}</flux:label>
-                            <flux:input wire:model="contact_number" required placeholder="09XX XXX XXXX" />
-                            <flux:error name="contact_number" />
-                        </flux:field>
-                    </div>
-
-                    {{-- Address --}}
-                    <flux:field>
-                        <flux:label>{{ __('Address') }}</flux:label>
-                        <flux:textarea wire:model="address" required rows="2" placeholder="{{ __('Street, Barangay, City/Municipality') }}" />
-                        <flux:error name="address" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>{{ __('Purok / Zone') }}</flux:label>
-                        <flux:input wire:model="purok" placeholder="{{ __('Optional') }}" />
-                        <flux:error name="purok" />
-                    </flux:field>
-
-                    {{-- Submit --}}
-                    <div class="flex justify-end gap-2 pt-2">
-                        <flux:button variant="primary" type="submit" wire:loading.attr="disabled">
-                            <span wire:loading.remove wire:target="submitProfile">{{ __('Submit for Approval') }}</span>
-                            <span wire:loading wire:target="submitProfile">{{ __('Submitting...') }}</span>
-                        </flux:button>
-                    </div>
-                </form>
-            </div>
-        </flux:modal>
-
     @endif
 </div>

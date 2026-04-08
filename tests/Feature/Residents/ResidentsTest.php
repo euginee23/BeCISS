@@ -8,6 +8,7 @@ beforeEach(function () {
     $this->admin = User::factory()->admin()->create();
     $this->staff = User::factory()->staff()->create();
     $this->resident = User::factory()->resident()->create();
+    Resident::factory()->create(['user_id' => $this->resident->id]);
 });
 
 describe('residents index', function () {

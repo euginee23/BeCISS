@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\BarangayProfile;
+use App\Models\Resident;
 use App\Models\User;
 use Livewire\Livewire;
 
@@ -8,6 +9,7 @@ beforeEach(function () {
     $this->admin = User::factory()->admin()->create();
     $this->staff = User::factory()->staff()->create();
     $this->resident = User::factory()->create();
+    Resident::factory()->create(['user_id' => $this->resident->id]);
 });
 
 describe('barangay settings page', function () {

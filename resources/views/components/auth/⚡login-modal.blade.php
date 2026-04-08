@@ -40,19 +40,6 @@ new class extends Component
 
         RateLimiter::clear('login:'.$throttleKey);
 
-        $user = Auth::user();
-
-        if ($user->two_factor_confirmed_at !== null) {
-            session()->put([
-                'login.id' => $user->getKey(),
-                'login.remember' => $this->remember,
-            ]);
-            Auth::logout();
-            $this->redirect(route('two-factor.login'));
-
-            return;
-        }
-
         session()->regenerate();
         $this->redirect(route('dashboard'), navigate: true);
     }

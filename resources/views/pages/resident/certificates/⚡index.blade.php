@@ -18,6 +18,14 @@ class extends Component
     #[Url]
     public string $status = '';
 
+    public bool $showExportModal = false;
+    public ?int $exportCertificateId = null;
+    public string $dateOfIssuance = '';
+    public string $ctcNo = '';
+    public string $ctcPlaceIssued = '';
+    public string $ctcDateIssued = '';
+    public string $exportFormat = 'docx';
+
     public function updatedStatus(): void
     {
         $this->resetPage();
@@ -43,15 +51,56 @@ class extends Component
             ->latest()
             ->paginate(10);
     }
+
+    public function openExportModal(int $certificateId): void
+    {
+        $this->exportCertificateId = $certificateId;
+        $this->dateOfIssuance = now()->format('Y-m-d');
+        $this->ctcNo = '';
+        $this->ctcPlaceIssued = '';
+        $this->ctcDateIssued = '';
+        $this->exportFormat = 'docx';
+        $this->showExportModal = true;
+    }
+
+    public function downloadCertificate(): void
+    {
+        $this->validate([
+            'dateOfIssuance' => ['required', 'date'],
+            'ctcNo' => ['nullable', 'string', 'max:100'],
+            'ctcPlaceIssued' => ['nullable', 'string', 'max:200'],
+            'ctcDateIssued' => ['nullable', 'date'],
+            'exportFormat' => ['required', 'in:docx,pdf'],
+        ]);
+
+        $certificate = Certificate::findOrFail($this->exportCertificateId);
+
+        $url = route('certificates.download', $certificate).'?'.http_build_query([
+            'format' => $this->exportFormat,
+            'date_of_issuance' => $this->dateOfIssuance,
+            'ctc_no' => $this->ctcNo,
+            'ctc_place_issued' => $this->ctcPlaceIssued,
+            'ctc_date_issued' => $this->ctcDateIssued,
+        ]);
+
+        $this->showExportModal = false;
+
+        $this->dispatch('download-certificate', url: $url);
+    }
 };
 ?>
 
 <div class="flex flex-col gap-6">
 
     {{-- Header --}}
-    <div>
-        <flux:heading size="xl" class="text-zinc-900 dark:text-white">My Certificates</flux:heading>
-        <flux:text class="text-zinc-500 dark:text-zinc-400 mt-1">Track the status of your certificate requests.</flux:text>
+    <div class="flex items-center justify-between">
+        <div>
+            <flux:heading size="xl" class="text-zinc-900 dark:text-white">My Certificates</flux:heading>
+            <flux:text class="text-zinc-500 dark:text-zinc-400 mt-1">Track the status of your certificate requests.</flux:text>
+        </div>
+        <flux:button variant="primary" icon="plus" href="{{ route('resident.certificates.create') }}">
+            {{ __('Request Certificate') }}
+        </flux:button>
     </div>
 
     {{-- Status Filter --}}
@@ -103,18 +152,26 @@ class extends Component
                         @endif
 
                         {{-- Details row --}}
-                        <div class="flex items-center gap-4 flex-wrap text-sm text-zinc-600 dark:text-zinc-300">
-                            <span class="flex items-center gap-1.5">
-                                <flux:icon name="calendar" class="size-4 text-zinc-400" />
-                                {{ $cert->created_at->format('M d, Y') }}
-                            </span>
-                            <span class="flex items-center gap-1.5">
-                                <flux:icon name="banknotes" class="size-4 text-zinc-400" />
-                                ₱{{ number_format($cert->fee, 2) }}
-                                @if($cert->is_paid)
-                                    <flux:badge color="green" size="sm">Paid</flux:badge>
-                                @endif
-                            </span>
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <div class="flex items-center gap-4 flex-wrap text-sm text-zinc-600 dark:text-zinc-300">
+                                <span class="flex items-center gap-1.5">
+                                    <flux:icon name="calendar" class="size-4 text-zinc-400" />
+                                    {{ $cert->created_at->format('M d, Y') }}
+                                </span>
+                                <span class="flex items-center gap-1.5">
+                                    <flux:icon name="banknotes" class="size-4 text-zinc-400" />
+                                    ₱{{ number_format($cert->fee, 2) }}
+                                    @if($cert->is_paid)
+                                        <flux:badge color="green" size="sm">Paid</flux:badge>
+                                    @endif
+                                </span>
+                            </div>
+
+                            @if($cert->type === 'certificate_of_residency')
+                                <flux:button variant="ghost" size="sm" icon="arrow-down-tray" wire:click="openExportModal({{ $cert->id }})">
+                                    {{ __('Download') }}
+                                </flux:button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -146,4 +203,65 @@ class extends Component
         </div>
     @endif
 
+    {{-- Export Modal --}}
+    <flux:modal wire:model="showExportModal" class="max-w-sm">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Download Certificate') }}</flux:heading>
+                <flux:text class="mt-2">
+                    {{ __('Fill in the details below before generating the document.') }}
+                </flux:text>
+            </div>
+
+            <flux:field>
+                <flux:label>{{ __('Date of Issuance') }} <span class="text-red-500">*</span></flux:label>
+                <flux:input type="date" wire:model="dateOfIssuance" required />
+                <flux:error name="dateOfIssuance" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('CTC No.') }}</flux:label>
+                <flux:input wire:model="ctcNo" placeholder="e.g. 12345678" />
+                <flux:error name="ctcNo" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('CTC Place Issued') }}</flux:label>
+                <flux:input wire:model="ctcPlaceIssued" placeholder="e.g. Municipality of ..." />
+                <flux:error name="ctcPlaceIssued" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('CTC Date Issued') }}</flux:label>
+                <flux:input type="date" wire:model="ctcDateIssued" />
+                <flux:error name="ctcDateIssued" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('Format') }}</flux:label>
+                <flux:radio.group wire:model="exportFormat">
+                    <flux:radio value="docx" label="{{ __('Word Document (.docx)') }}" />
+                    <flux:radio value="pdf" label="{{ __('PDF (.pdf)') }}" />
+                </flux:radio.group>
+                <flux:error name="exportFormat" />
+            </flux:field>
+
+            <div class="flex justify-end gap-2">
+                <flux:button variant="ghost" wire:click="$set('showExportModal', false)">
+                    {{ __('Cancel') }}
+                </flux:button>
+                <flux:button variant="primary" icon="arrow-down-tray" wire:click="downloadCertificate">
+                    {{ __('Generate & Download') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>
+
+@script
+<script>
+    $wire.on('download-certificate', ({ url }) => {
+        window.open(url, '_blank');
+    });
+</script>
+@endscript

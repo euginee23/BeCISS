@@ -85,9 +85,14 @@ class extends Component
 <div class="flex flex-col gap-6">
 
     {{-- Header --}}
-    <div>
-        <flux:heading size="xl" class="text-zinc-900 dark:text-white">My Appointments</flux:heading>
-        <flux:text class="text-zinc-500 dark:text-zinc-400 mt-1">View and manage your scheduled service appointments.</flux:text>
+    <div class="flex items-center justify-between">
+        <div>
+            <flux:heading size="xl" class="text-zinc-900 dark:text-white">My Appointments</flux:heading>
+            <flux:text class="text-zinc-500 dark:text-zinc-400 mt-1">View and manage your scheduled service appointments.</flux:text>
+        </div>
+        <flux:button variant="primary" icon="plus" href="{{ route('resident.appointments.create') }}">
+            {{ __('Book Appointment') }}
+        </flux:button>
     </div>
 
     {{-- Tabs --}}
