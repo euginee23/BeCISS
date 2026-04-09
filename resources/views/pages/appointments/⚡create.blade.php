@@ -1,7 +1,10 @@
 <?php
 
+use App\Mail\AppointmentScheduled;
 use App\Models\Appointment;
 use App\Models\Resident;
+use App\Notifications\ResidentNotification;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -10,13 +13,20 @@ use Livewire\Component;
 new
 #[Title('Schedule Appointment')]
 #[Layout('layouts::app')]
-class extends Component {
+class extends Component
+{
     public ?int $resident_id = null;
+
     public string $service_type = '';
+
     public string $description = '';
+
     public string $appointment_date = '';
+
     public string $appointment_time = '';
+
     public int $duration_minutes = 30;
+
     public string $notes = '';
 
     /**
@@ -28,7 +38,7 @@ class extends Component {
     {
         return [
             'resident_id' => ['required', 'exists:residents,id'],
-            'service_type' => ['required', 'in:' . implode(',', array_keys(Appointment::SERVICE_TYPES))],
+            'service_type' => ['required', 'in:'.implode(',', array_keys(Appointment::SERVICE_TYPES))],
             'description' => ['required', 'string', 'max:1000'],
             'appointment_date' => ['required', 'date', 'after_or_equal:today'],
             'appointment_time' => ['required', 'date_format:H:i'],
@@ -43,7 +53,20 @@ class extends Component {
 
         $validated['reference_number'] = Appointment::generateReferenceNumber();
 
-        Appointment::create($validated);
+        $appointment = Appointment::create($validated);
+
+        $residentUser = $appointment->resident->user ?? null;
+
+        if ($residentUser) {
+            Mail::to($residentUser->email)->send(new AppointmentScheduled($residentUser, $appointment));
+
+            $residentUser->notify(new ResidentNotification(
+                type: 'appointment_booked',
+                title: 'Appointment Scheduled',
+                body: 'An appointment for '.$appointment->service_type_label.' has been scheduled for you on '.$appointment->appointment_date->format('F j, Y').' at '.$appointment->appointment_time->format('g:i A').'. Reference: '.$appointment->reference_number.'.',
+                url: route('resident.appointments.index'),
+            ));
+        }
 
         session()->flash('status', __('Appointment scheduled successfully.'));
 

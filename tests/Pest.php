@@ -14,7 +14,7 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
-    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+    ->use(Illuminate\Foundation\Testing\DatabaseTransactions::class)
     ->in('Feature');
 
 /*

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Certificate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -8,9 +9,12 @@ use Livewire\Component;
 new
 #[Title('Request Certificate')]
 #[Layout('layouts::app')]
-class extends Component {
+class extends Component
+{
     public string $type = '';
+
     public string $purpose = '';
+
     public string $remarks = '';
 
     /**
@@ -32,8 +36,8 @@ class extends Component {
     protected function rules(): array
     {
         return [
-            'type' => ['required', 'in:' . implode(',', array_keys(self::ALLOWED_TYPES))],
-            'purpose' => ['required', 'in:' . implode(',', Certificate::PURPOSE_OPTIONS)],
+            'type' => ['required', 'in:'.implode(',', array_keys(self::ALLOWED_TYPES))],
+            'purpose' => ['required', Rule::in(Certificate::PURPOSE_OPTIONS)],
             'remarks' => ['nullable', 'string', 'max:1000'],
         ];
     }

@@ -44,14 +44,14 @@ describe('certificate request submission', function () {
         Livewire::actingAs($this->residentUser)
             ->test('pages::resident.certificates.create')
             ->set('type', 'barangay_clearance')
-            ->set('purpose', 'Employment requirement')
+            ->set('purpose', 'Employment / Job Application')
             ->call('save')
             ->assertRedirect(route('resident.certificates.index'));
 
         $this->assertDatabaseHas('certificates', [
             'resident_id' => $resident->id,
             'type' => 'barangay_clearance',
-            'purpose' => 'Employment requirement',
+            'purpose' => 'Employment / Job Application',
             'status' => 'pending',
             'fee' => 50.00,
         ]);
@@ -61,7 +61,7 @@ describe('certificate request submission', function () {
         Livewire::actingAs($this->residentUser)
             ->test('pages::resident.certificates.create')
             ->set('type', 'certificate_of_residency')
-            ->set('purpose', 'Proof of address')
+            ->set('purpose', 'Other')
             ->call('save')
             ->assertRedirect(route('resident.certificates.index'));
 
@@ -75,7 +75,7 @@ describe('certificate request submission', function () {
         Livewire::actingAs($this->residentUser)
             ->test('pages::resident.certificates.create')
             ->set('type', 'certificate_of_indigency')
-            ->set('purpose', 'Financial assistance')
+            ->set('purpose', 'Government Benefits (SSS, PhilHealth, GSIS)')
             ->call('save')
             ->assertRedirect(route('resident.certificates.index'));
 
@@ -91,7 +91,7 @@ describe('certificate request submission', function () {
         Livewire::actingAs($this->residentUser)
             ->test('pages::resident.certificates.create')
             ->set('type', 'barangay_clearance')
-            ->set('purpose', 'Testing')
+            ->set('purpose', 'Employment / Job Application')
             ->call('save');
 
         $certificate = Certificate::where('resident_id', $resident->id)->first();
@@ -102,7 +102,7 @@ describe('certificate request submission', function () {
         Livewire::actingAs($this->residentUser)
             ->test('pages::resident.certificates.create')
             ->set('type', 'barangay_clearance')
-            ->set('purpose', 'Employment')
+            ->set('purpose', 'Employment / Job Application')
             ->set('remarks', 'Please rush this request')
             ->call('save')
             ->assertRedirect(route('resident.certificates.index'));

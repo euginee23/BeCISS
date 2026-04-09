@@ -2,12 +2,14 @@
 
 use App\Mail\VerifyEmailCode;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
     $this->skipUnlessFortifyFeature(Features::emailVerification());
+    $this->withoutMiddleware(ValidateCsrfToken::class);
 });
 
 test('email verification screen can be rendered', function () {

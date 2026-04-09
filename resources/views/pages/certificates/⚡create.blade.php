@@ -2,6 +2,7 @@
 
 use App\Models\Certificate;
 use App\Models\Resident;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -10,10 +11,14 @@ use Livewire\Component;
 new
 #[Title('New Certificate Request')]
 #[Layout('layouts::app')]
-class extends Component {
+class extends Component
+{
     public ?int $resident_id = null;
+
     public string $type = '';
+
     public string $purpose = '';
+
     public string $remarks = '';
 
     /**
@@ -25,8 +30,8 @@ class extends Component {
     {
         return [
             'resident_id' => ['required', 'exists:residents,id'],
-            'type' => ['required', 'in:' . implode(',', array_keys(Certificate::TYPES))],
-            'purpose' => ['required', 'in:' . implode(',', Certificate::PURPOSE_OPTIONS)],
+            'type' => ['required', 'in:'.implode(',', array_keys(Certificate::TYPES))],
+            'purpose' => ['required', Rule::in(Certificate::PURPOSE_OPTIONS)],
             'remarks' => ['nullable', 'string', 'max:1000'],
         ];
     }

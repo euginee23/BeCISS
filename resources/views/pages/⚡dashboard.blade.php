@@ -249,7 +249,7 @@ class extends Component
                                     <p class="text-sm font-medium text-zinc-900 dark:text-white truncate">{{ $appt->resident?->full_name ?? 'Unknown' }}</p>
                                     <p class="text-xs text-zinc-500 dark:text-zinc-400 truncate">{{ $appt->service_type_label }} &middot; {{ $appt->appointment_date->format('M d') }} at {{ $appt->appointment_time->format('h:i A') }}</p>
                                 </div>
-                                <flux:badge :color="match($appt->status) { 'scheduled' => 'zinc', 'confirmed' => 'blue', 'in_progress' => 'yellow', default => 'zinc' }" size="sm">
+                                <flux:badge :color="match($appt->status) { 'scheduled' => 'zinc', 'confirmed' => 'blue', default => 'zinc' }" size="sm">
                                     {{ $appt->status_label }}
                                 </flux:badge>
                             </div>
@@ -368,7 +368,7 @@ class extends Component
                                     <p class="text-sm font-medium text-zinc-900 dark:text-white truncate">{{ $appt->service_type_label }}</p>
                                     <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $appt->appointment_date->format('F d, Y') }} at {{ $appt->appointment_time->format('h:i A') }}</p>
                                 </div>
-                                <flux:badge :color="match($appt->status) { 'scheduled' => 'zinc', 'confirmed' => 'blue', 'in_progress' => 'yellow', default => 'zinc' }" size="sm">
+                                <flux:badge :color="match($appt->status) { 'scheduled' => 'zinc', 'confirmed' => 'blue', default => 'zinc' }" size="sm">
                                     {{ $appt->status_label }}
                                 </flux:badge>
                             </div>

@@ -1,9 +1,11 @@
 <?php
 
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
     $this->skipUnlessFortifyFeature(Features::registration());
+    $this->withoutMiddleware(ValidateCsrfToken::class);
 });
 
 test('registration screen redirects to home', function () {

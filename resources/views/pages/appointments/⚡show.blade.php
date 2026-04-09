@@ -4,6 +4,7 @@ use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentCompleted;
 use App\Mail\AppointmentConfirmed;
 use App\Models\Appointment;
+use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Layout;
@@ -13,7 +14,8 @@ use Livewire\Component;
 new
 #[Title('View Appointment')]
 #[Layout('layouts::app')]
-class extends Component {
+class extends Component
+{
     public Appointment $appointment;
 
     public bool $showCancelModal = false;
@@ -38,16 +40,11 @@ class extends Component {
 
         $this->appointment->refresh();
         $this->notifyResident(AppointmentConfirmed::class);
-    }
-
-    public function startAppointment(): void
-    {
-        $this->appointment->update([
-            'status' => 'in_progress',
-            'handled_by' => Auth::id(),
-        ]);
-
-        $this->appointment->refresh();
+        $this->notifyResidentDatabase(
+            type: 'appointment_confirmed',
+            title: 'Appointment Confirmed',
+            body: 'Your appointment for '.$this->appointment->service_type_label.' ('.$this->appointment->reference_number.') on '.$this->appointment->appointment_date->format('F j, Y').' at '.$this->appointment->appointment_time->format('g:i A').' has been confirmed.',
+        );
     }
 
     public function showCompleteModal(): void
@@ -59,7 +56,7 @@ class extends Component {
     {
         $notes = $this->appointment->notes;
         if ($this->completionNotes) {
-            $notes = $notes ? $notes . "\n\nCompletion: " . $this->completionNotes : $this->completionNotes;
+            $notes = $notes ? $notes."\n\nCompletion: ".$this->completionNotes : $this->completionNotes;
         }
 
         $this->appointment->update([
@@ -71,6 +68,11 @@ class extends Component {
         $this->showCompleteModal = false;
         $this->appointment->refresh();
         $this->notifyResident(AppointmentCompleted::class);
+        $this->notifyResidentDatabase(
+            type: 'appointment_completed',
+            title: 'Appointment Completed',
+            body: 'Your appointment for '.$this->appointment->service_type_label.' ('.$this->appointment->reference_number.') has been completed. Thank you for visiting!',
+        );
     }
 
     public function markNoShow(): void
@@ -80,6 +82,11 @@ class extends Component {
         ]);
 
         $this->appointment->refresh();
+        $this->notifyResidentDatabase(
+            type: 'appointment_no_show',
+            title: 'Appointment Missed',
+            body: 'You were marked as a no-show for your appointment ('.$this->appointment->reference_number.') on '.$this->appointment->appointment_date->format('F j, Y').'. Please book a new appointment if needed.',
+        );
     }
 
     public function showCancelModal(): void
@@ -98,6 +105,11 @@ class extends Component {
         $this->showCancelModal = false;
         $this->appointment->refresh();
         $this->notifyResident(AppointmentCancelled::class);
+        $this->notifyResidentDatabase(
+            type: 'appointment_cancelled',
+            title: 'Appointment Cancelled',
+            body: 'Your appointment for '.$this->appointment->service_type_label.' ('.$this->appointment->reference_number.') has been cancelled. Reason: '.$this->cancellationReason,
+        );
     }
 
     private function notifyResident(string $mailableClass): void
@@ -107,6 +119,18 @@ class extends Component {
         if ($user) {
             Mail::to($user->email)->send(new $mailableClass($user, $this->appointment));
         }
+    }
+
+    private function notifyResidentDatabase(string $type, string $title, string $body): void
+    {
+        $user = $this->appointment->resident->user;
+
+        $user?->notify(new ResidentNotification(
+            type: $type,
+            title: $title,
+            body: $body,
+            url: route('resident.appointments.index'),
+        ));
     }
 }; ?>
 
@@ -144,18 +168,14 @@ class extends Component {
                     {{ __('Cancel') }}
                 </flux:button>
             @elseif ($appointment->status === 'confirmed')
-                <flux:button variant="primary" wire:click="startAppointment">
-                    {{ __('Start') }}
+                <flux:button variant="primary" wire:click="showCompleteModal">
+                    {{ __('Mark Complete') }}
                 </flux:button>
                 <flux:button variant="ghost" wire:click="markNoShow">
                     {{ __('No Show') }}
                 </flux:button>
                 <flux:button variant="danger" wire:click="showCancelModal">
                     {{ __('Cancel') }}
-                </flux:button>
-            @elseif ($appointment->status === 'in_progress')
-                <flux:button variant="primary" wire:click="showCompleteModal">
-                    {{ __('Complete') }}
                 </flux:button>
             @endif
         </div>

@@ -124,7 +124,8 @@ test('approved scope returns only approved residents', function () {
     Resident::factory()->pending()->create(['user_id' => $user2->id]);
     Resident::factory()->rejected()->create(['user_id' => $user3->id]);
 
-    expect(Resident::approved()->count())->toBe(1);
+    $ids = [$user1->id, $user2->id, $user3->id];
+    expect(Resident::approved()->whereIn('user_id', $ids)->count())->toBe(1);
 });
 
 test('pending scope returns only pending residents', function () {
@@ -134,7 +135,8 @@ test('pending scope returns only pending residents', function () {
     Resident::factory()->create(['user_id' => $user1->id]);
     Resident::factory()->pending()->create(['user_id' => $user2->id]);
 
-    expect(Resident::pending()->count())->toBe(1);
+    $ids = [$user1->id, $user2->id];
+    expect(Resident::pending()->whereIn('user_id', $ids)->count())->toBe(1);
 });
 
 /*

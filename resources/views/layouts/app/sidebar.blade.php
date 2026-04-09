@@ -18,14 +18,19 @@
                 </flux:sidebar.group>
 
                 @if(auth()->user()->hasRole(['admin', 'staff']))
+                @php
+                    $pendingResidents    = \App\Models\Resident::pending()->count();
+                    $pendingCertificates = \App\Models\Certificate::where('status', 'pending')->count();
+                    $scheduledAppointments = \App\Models\Appointment::where('status', 'scheduled')->count();
+                @endphp
                 <flux:sidebar.group :heading="__('Management')" class="grid">
-                    <flux:sidebar.item icon="users" :href="route('residents.index')" :current="request()->routeIs('residents.*')" wire:navigate>
+                    <flux:sidebar.item icon="users" :href="route('residents.index')" :current="request()->routeIs('residents.*')" wire:navigate :badge="$pendingResidents ?: null" badge:color="amber">
                         {{ __('Residents') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="document-text" :href="route('certificates.index')" :current="request()->routeIs('certificates.*')" wire:navigate>
+                    <flux:sidebar.item icon="document-text" :href="route('certificates.index')" :current="request()->routeIs('certificates.*')" wire:navigate :badge="$pendingCertificates ?: null" badge:color="amber">
                         {{ __('Certificates') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="calendar" :href="route('appointments.index')" :current="request()->routeIs('appointments.*')" wire:navigate>
+                    <flux:sidebar.item icon="calendar" :href="route('appointments.index')" :current="request()->routeIs('appointments.*')" wire:navigate :badge="$scheduledAppointments ?: null" badge:color="amber">
                         {{ __('Appointments') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
@@ -40,11 +45,16 @@
                 @endif
 
                 @if(auth()->user()->isResident())
+                @php
+                    $myResidentRecord = auth()->user()->resident;
+                    $myPendingCertificates  = $myResidentRecord ? \App\Models\Certificate::where('resident_id', $myResidentRecord->id)->where('status', 'pending')->count() : 0;
+                    $myScheduledAppointments = $myResidentRecord ? \App\Models\Appointment::where('resident_id', $myResidentRecord->id)->where('status', 'scheduled')->count() : 0;
+                @endphp
                 <flux:sidebar.group :heading="__('My Services')" class="grid">
-                    <flux:sidebar.item icon="document-text" :href="route('resident.certificates.index')" :current="request()->routeIs('resident.certificates.*')" wire:navigate>
+                    <flux:sidebar.item icon="document-text" :href="route('resident.certificates.index')" :current="request()->routeIs('resident.certificates.*')" wire:navigate :badge="$myPendingCertificates ?: null" badge:color="amber">
                         {{ __('My Certificates') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="calendar" :href="route('resident.appointments.index')" :current="request()->routeIs('resident.appointments.*')" wire:navigate>
+                    <flux:sidebar.item icon="calendar" :href="route('resident.appointments.index')" :current="request()->routeIs('resident.appointments.*')" wire:navigate :badge="$myScheduledAppointments ?: null" badge:color="amber">
                         {{ __('My Appointments') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
@@ -52,16 +62,6 @@
             </flux:sidebar.nav>
 
             <flux:spacer />
-
-            <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('Repository') }}
-                </flux:sidebar.item>
-
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('Documentation') }}
-                </flux:sidebar.item>
-            </flux:sidebar.nav>
 
             <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
         </flux:sidebar>

@@ -1,6 +1,11 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+
+beforeEach(function () {
+    $this->withoutMiddleware(ValidateCsrfToken::class);
+});
 
 test('login screen redirects to home', function () {
     $response = $this->get(route('login'));

@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Appointment;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -19,7 +18,9 @@ class extends Component
     public string $tab = 'upcoming';
 
     public bool $showCancelModal = false;
+
     public ?int $appointmentToCancel = null;
+
     public string $cancellationReason = '';
 
     public function updatedTab(): void
@@ -44,7 +45,7 @@ class extends Component
 
         return $resident->appointments()
             ->when($this->tab === 'upcoming', fn ($q) => $q->upcoming())
-            ->when($this->tab === 'past', fn ($q) => $q->where('appointment_date', '<', today())->whereIn('status', ['completed', 'no_show', 'cancelled']))
+            ->when($this->tab === 'past', fn ($q) => $q->whereIn('status', ['completed', 'no_show', 'cancelled']))
             ->latest('appointment_date')
             ->paginate(10);
     }
@@ -124,7 +125,6 @@ class extends Component
                                     <flux:badge :color="match($appt->status) {
                                         'scheduled' => 'zinc',
                                         'confirmed' => 'blue',
-                                        'in_progress' => 'yellow',
                                         'completed' => 'green',
                                         'cancelled' => 'red',
                                         'no_show' => 'orange',

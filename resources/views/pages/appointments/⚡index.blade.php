@@ -92,7 +92,7 @@ class extends Component {
     #[Computed]
     public function todayCount(): int
     {
-        return Appointment::today()->whereIn('status', ['scheduled', 'confirmed', 'in_progress'])->count();
+        return Appointment::today()->whereIn('status', ['scheduled', 'confirmed'])->count();
     }
 
     #[Computed]

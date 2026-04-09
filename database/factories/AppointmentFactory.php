@@ -44,16 +44,6 @@ class AppointmentFactory extends Factory
     }
 
     /**
-     * Set as in progress.
-     */
-    public function inProgress(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'status' => 'in_progress',
-        ]);
-    }
-
-    /**
      * Set as completed.
      */
     public function completed(): static
@@ -93,7 +83,7 @@ class AppointmentFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'service_type' => 'certificate_request',
-            'description' => 'Request for ' . fake()->randomElement(['Barangay Clearance', 'Certificate of Residency', 'Certificate of Indigency']),
+            'description' => 'Request for '.fake()->randomElement(['Barangay Clearance', 'Certificate of Residency', 'Certificate of Indigency']),
         ]);
     }
 
@@ -104,7 +94,7 @@ class AppointmentFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'service_type' => 'consultation',
-            'description' => 'Consultation regarding ' . fake()->word(),
+            'description' => 'Consultation regarding '.fake()->word(),
         ]);
     }
 }

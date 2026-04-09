@@ -69,12 +69,17 @@ class extends Component {
                     $data = $notification->data;
                     $isUnread = is_null($notification->read_at);
                     $iconMap = [
-                        'registration_approved'  => ['icon' => 'check-circle',   'color' => 'text-emerald-500', 'bg' => 'bg-emerald-50 dark:bg-emerald-900/20'],
-                        'registration_rejected'  => ['icon' => 'x-circle',       'color' => 'text-red-500',     'bg' => 'bg-red-50 dark:bg-red-900/20'],
-                        'certificate_processing' => ['icon' => 'cog-6-tooth',    'color' => 'text-blue-500',    'bg' => 'bg-blue-50 dark:bg-blue-900/20'],
-                        'certificate_ready'      => ['icon' => 'document-check', 'color' => 'text-emerald-500', 'bg' => 'bg-emerald-50 dark:bg-emerald-900/20'],
-                        'certificate_completed'  => ['icon' => 'check-badge',    'color' => 'text-green-600',   'bg' => 'bg-green-50 dark:bg-green-900/20'],
-                        'certificate_rejected'   => ['icon' => 'x-circle',       'color' => 'text-red-500',     'bg' => 'bg-red-50 dark:bg-red-900/20'],
+                        'registration_approved'   => ['icon' => 'check-circle',   'color' => 'text-emerald-500', 'bg' => 'bg-emerald-50 dark:bg-emerald-900/20'],
+                        'registration_rejected'   => ['icon' => 'x-circle',       'color' => 'text-red-500',     'bg' => 'bg-red-50 dark:bg-red-900/20'],
+                        'certificate_processing'  => ['icon' => 'cog-6-tooth',    'color' => 'text-blue-500',    'bg' => 'bg-blue-50 dark:bg-blue-900/20'],
+                        'certificate_ready'       => ['icon' => 'document-check', 'color' => 'text-emerald-500', 'bg' => 'bg-emerald-50 dark:bg-emerald-900/20'],
+                        'certificate_completed'   => ['icon' => 'check-badge',    'color' => 'text-green-600',   'bg' => 'bg-green-50 dark:bg-green-900/20'],
+                        'certificate_rejected'    => ['icon' => 'x-circle',       'color' => 'text-red-500',     'bg' => 'bg-red-50 dark:bg-red-900/20'],
+                        'appointment_booked'      => ['icon' => 'calendar',       'color' => 'text-blue-500',    'bg' => 'bg-blue-50 dark:bg-blue-900/20'],
+                        'appointment_confirmed'   => ['icon' => 'calendar-days',  'color' => 'text-emerald-500', 'bg' => 'bg-emerald-50 dark:bg-emerald-900/20'],
+                        'appointment_completed'   => ['icon' => 'check-circle',   'color' => 'text-green-600',   'bg' => 'bg-green-50 dark:bg-green-900/20'],
+                        'appointment_cancelled'   => ['icon' => 'x-circle',       'color' => 'text-red-500',     'bg' => 'bg-red-50 dark:bg-red-900/20'],
+                        'appointment_no_show'     => ['icon' => 'no-symbol',      'color' => 'text-amber-500',   'bg' => 'bg-amber-50 dark:bg-amber-900/20'],
                     ];
                     $icon = $iconMap[$data['type']] ?? ['icon' => 'bell', 'color' => 'text-zinc-400', 'bg' => 'bg-zinc-100 dark:bg-zinc-800'];
                 @endphp

@@ -59,14 +59,14 @@ describe('certificates create', function () {
             ->test('pages::certificates.create')
             ->set('resident_id', $resident->id)
             ->set('type', 'barangay_clearance')
-            ->set('purpose', 'Employment')
+            ->set('purpose', 'Employment / Job Application')
             ->call('save')
             ->assertRedirect(route('certificates.index'));
 
         $this->assertDatabaseHas('certificates', [
             'resident_id' => $resident->id,
             'type' => 'barangay_clearance',
-            'purpose' => 'Employment',
+            'purpose' => 'Employment / Job Application',
             'status' => 'pending',
         ]);
     });
@@ -150,13 +150,13 @@ describe('certificate edit', function () {
 
         Livewire::actingAs($this->admin)
             ->test('pages::certificates.edit', ['certificate' => $certificate])
-            ->set('purpose', 'Updated Purpose')
+            ->set('purpose', 'Other')
             ->call('save')
             ->assertRedirect(route('certificates.show', $certificate));
 
         $this->assertDatabaseHas('certificates', [
             'id' => $certificate->id,
-            'purpose' => 'Updated Purpose',
+            'purpose' => 'Other',
         ]);
     });
 });

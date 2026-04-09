@@ -104,6 +104,9 @@ test('submitting a profile does not send pending registration email to non-admin
 test('no pending registration email sent when no admins exist', function () {
     Mail::fake();
 
+    // Clear all admins within this transaction so no emails go out
+    User::where('role', 'admin')->delete();
+
     $residentUser = User::factory()->resident()->create();
 
     Livewire::actingAs($residentUser)

@@ -33,7 +33,6 @@ class Appointment extends Model
     public const array STATUSES = [
         'scheduled' => 'Scheduled',
         'confirmed' => 'Confirmed',
-        'in_progress' => 'In Progress',
         'completed' => 'Completed',
         'cancelled' => 'Cancelled',
         'no_show' => 'No Show',
@@ -100,7 +99,6 @@ class Appointment extends Model
         return match ($this->status) {
             'scheduled' => 'amber',
             'confirmed' => 'blue',
-            'in_progress' => 'indigo',
             'completed' => 'green',
             'cancelled' => 'red',
             'no_show' => 'zinc',
@@ -113,7 +111,7 @@ class Appointment extends Model
      */
     public function getFormattedDatetimeAttribute(): string
     {
-        return $this->appointment_date->format('M j, Y') . ' at ' . $this->appointment_time->format('g:i A');
+        return $this->appointment_date->format('M j, Y').' at '.$this->appointment_time->format('g:i A');
     }
 
     /**

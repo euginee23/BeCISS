@@ -76,12 +76,17 @@ new class extends Component {
                     $data = $notification->data;
                     $isUnread = is_null($notification->read_at);
                     $iconMap = [
-                        'registration_approved'  => ['icon' => 'check-circle',    'color' => 'text-emerald-500'],
-                        'registration_rejected'  => ['icon' => 'x-circle',        'color' => 'text-red-500'],
-                        'certificate_processing' => ['icon' => 'cog-6-tooth',     'color' => 'text-blue-500'],
-                        'certificate_ready'      => ['icon' => 'document-check',  'color' => 'text-emerald-500'],
-                        'certificate_completed'  => ['icon' => 'check-badge',     'color' => 'text-green-600'],
-                        'certificate_rejected'   => ['icon' => 'x-circle',        'color' => 'text-red-500'],
+                        'registration_approved'   => ['icon' => 'check-circle',    'color' => 'text-emerald-500'],
+                        'registration_rejected'   => ['icon' => 'x-circle',        'color' => 'text-red-500'],
+                        'certificate_processing'  => ['icon' => 'cog-6-tooth',     'color' => 'text-blue-500'],
+                        'certificate_ready'       => ['icon' => 'document-check',  'color' => 'text-emerald-500'],
+                        'certificate_completed'   => ['icon' => 'check-badge',     'color' => 'text-green-600'],
+                        'certificate_rejected'    => ['icon' => 'x-circle',        'color' => 'text-red-500'],
+                        'appointment_booked'      => ['icon' => 'calendar',        'color' => 'text-blue-500'],
+                        'appointment_confirmed'   => ['icon' => 'calendar-days',   'color' => 'text-emerald-500'],
+                        'appointment_completed'   => ['icon' => 'check-circle',    'color' => 'text-green-600'],
+                        'appointment_cancelled'   => ['icon' => 'x-circle',        'color' => 'text-red-500'],
+                        'appointment_no_show'     => ['icon' => 'no-symbol',       'color' => 'text-amber-500'],
                     ];
                     $icon = $iconMap[$data['type']] ?? ['icon' => 'bell', 'color' => 'text-zinc-400'];
                 @endphp
