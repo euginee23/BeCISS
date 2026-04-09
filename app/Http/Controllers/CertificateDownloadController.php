@@ -31,18 +31,20 @@ class CertificateDownloadController extends Controller
 
         $docxPath = $service->generate($certificate, $validated);
 
+        $typeLabel = str_replace(' ', '_', $certificate->type_label);
+
         if ($validated['format'] === 'pdf') {
             $pdfPath = $service->convertToPdf($docxPath);
             $service->cleanup($docxPath);
 
-            $filename = "Certificate_of_Residency_{$certificate->certificate_number}.pdf";
+            $filename = "{$typeLabel}_{$certificate->certificate_number}.pdf";
 
             return response()
                 ->download($pdfPath, $filename, ['Content-Type' => 'application/pdf'])
                 ->deleteFileAfterSend(true);
         }
 
-        $filename = "Certificate_of_Residency_{$certificate->certificate_number}.docx";
+        $filename = "{$typeLabel}_{$certificate->certificate_number}.docx";
 
         return response()
             ->download($docxPath, $filename, [

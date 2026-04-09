@@ -102,7 +102,7 @@ test('can download certificate regardless of status', function () {
 
 test('cannot download certificate type without template', function () {
     $user = User::factory()->admin()->create();
-    $certificate = Certificate::factory()->barangayClearance()->completed()->create();
+    $certificate = Certificate::factory()->indigency()->completed()->create();
 
     $this->actingAs($user)
         ->get(route('certificates.download', $certificate).'?'.http_build_query([
@@ -180,4 +180,91 @@ test('downloaded docx filename includes certificate number', function () {
 
     $disposition = $response->headers->get('content-disposition');
     expect($disposition)->toContain($certificate->certificate_number);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Barangay Clearance
+|--------------------------------------------------------------------------
+*/
+
+test('admin can download barangay clearance', function () {
+    $user = User::factory()->admin()->create();
+    $certificate = Certificate::factory()->barangayClearance()->completed()->create();
+
+    $this->actingAs($user)
+        ->get(route('certificates.download', $certificate).'?'.http_build_query([
+            'format' => 'docx',
+            'date_of_issuance' => '2026-04-01',
+        ]))
+        ->assertSuccessful();
+});
+
+test('barangay clearance docx has correct content type', function () {
+    $user = User::factory()->admin()->create();
+    $certificate = Certificate::factory()->barangayClearance()->completed()->create();
+
+    $response = $this->actingAs($user)
+        ->get(route('certificates.download', $certificate).'?'.http_build_query([
+            'format' => 'docx',
+            'date_of_issuance' => '2026-04-01',
+        ]));
+
+    $response->assertSuccessful();
+    $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+});
+
+test('barangay clearance filename includes certificate number', function () {
+    $user = User::factory()->admin()->create();
+    $certificate = Certificate::factory()->barangayClearance()->completed()->create();
+
+    $response = $this->actingAs($user)
+        ->get(route('certificates.download', $certificate).'?'.http_build_query([
+            'format' => 'docx',
+            'date_of_issuance' => '2026-04-01',
+        ]));
+
+    $disposition = $response->headers->get('content-disposition');
+    expect($disposition)
+        ->toContain('Barangay_Clearance')
+        ->toContain($certificate->certificate_number);
+});
+
+test('barangay clearance fills correct placeholders in generated docx', function () {
+    $user = User::factory()->admin()->create();
+    $resident = Resident::factory()->create([
+        'first_name' => 'Juan',
+        'last_name' => 'Dela Cruz',
+        'address' => 'Zone 5, Some Street',
+        'purok' => '3',
+    ]);
+    $certificate = Certificate::factory()->barangayClearance()->completed()->create([
+        'resident_id' => $resident->id,
+        'purpose' => 'Employment / Job Application',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get(route('certificates.download', $certificate).'?'.http_build_query([
+            'format' => 'docx',
+            'date_of_issuance' => '2026-04-01',
+        ]));
+
+    $response->assertSuccessful();
+
+    // Save the downloaded file and verify placeholder replacement
+    $tempPath = sys_get_temp_dir().'/clearance_test_'.uniqid().'.docx';
+    file_put_contents($tempPath, $response->streamedContent());
+
+    $zip = new ZipArchive;
+    $zip->open($tempPath);
+    $xml = $zip->getFromName('word/document.xml');
+    $zip->close();
+
+    @unlink($tempPath);
+
+    expect($xml)
+        ->toContain('Juan')
+        ->toContain('Dela Cruz')
+        ->toContain('Purok 3., Zone 5, Some Street')
+        ->toContain('April 1, 2026');
 });

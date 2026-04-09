@@ -16,6 +16,7 @@ class CertificateDocumentService
      */
     private const array TEMPLATES = [
         'certificate_of_residency' => 'BARANGAY_RESIDENCY_TEMPLATE.docx',
+        'barangay_clearance' => 'BARANGAY_CLEARANCE_TEMPLATE.docx',
     ];
 
     /**
@@ -32,23 +33,7 @@ class CertificateDocumentService
 
         $template = new TemplateProcessor($templatePath);
 
-        $resident = $certificate->resident;
-        $barangay = BarangayProfile::get();
-
-        $residentAddress = collect([
-            $resident->purok ? "Purok {$resident->purok}." : null,
-            $resident->address,
-        ])->filter()->implode(', ');
-
-        $template->setValues([
-            'resident_name' => $resident->full_name,
-            'resident_address' => $residentAddress,
-            'barangay_name' => $barangay->barangay_name,
-            'municipality_name' => $barangay->municipality ?? '',
-            'province_name' => $barangay->province ?? '',
-            'issued_full_date' => Carbon::parse($formData['date_of_issuance'])->format('F j, Y'),
-            'punong_barangay_name' => $barangay->captain_name ?? '',
-        ]);
+        $template->setValues($this->getPlaceholderValues($certificate, $formData));
 
         $outputDir = storage_path('app/private/certificates');
         if (! is_dir($outputDir)) {
@@ -61,6 +46,44 @@ class CertificateDocumentService
         $template->saveAs($outputPath);
 
         return $outputPath;
+    }
+
+    /**
+     * Get the placeholder values for the given certificate type.
+     *
+     * @param  array{date_of_issuance: string, ctc_no: string, ctc_place_issued: string, ctc_date_issued: string}  $formData
+     * @return array<string, string>
+     */
+    private function getPlaceholderValues(Certificate $certificate, array $formData): array
+    {
+        $resident = $certificate->resident;
+        $barangay = BarangayProfile::get();
+
+        $residentAddress = collect([
+            $resident->purok ? "Purok {$resident->purok}." : null,
+            $resident->address,
+        ])->filter()->implode(', ');
+
+        return match ($certificate->type) {
+            'barangay_clearance' => [
+                'resident_name' => $resident->full_name,
+                'resident_address' => $residentAddress,
+                'barangay_name' => $barangay->barangay_name,
+                'municipality_name' => $barangay->municipality ?? '',
+                'province_name' => $barangay->province ?? '',
+                'issued_full_date' => Carbon::parse($formData['date_of_issuance'])->format('F j, Y'),
+                'punong_barangay_name' => $barangay->captain_name ?? '',
+            ],
+            default => [
+                'resident_name' => $resident->full_name,
+                'resident_address' => $residentAddress,
+                'barangay_name' => $barangay->barangay_name,
+                'municipality_name' => $barangay->municipality ?? '',
+                'province_name' => $barangay->province ?? '',
+                'issued_full_date' => Carbon::parse($formData['date_of_issuance'])->format('F j, Y'),
+                'punong_barangay_name' => $barangay->captain_name ?? '',
+            ],
+        };
     }
 
     /**

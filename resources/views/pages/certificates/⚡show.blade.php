@@ -207,7 +207,7 @@ class extends Component {
 
         {{-- Action Buttons --}}
         <div class="flex gap-2">
-            @if ($certificate->type === 'certificate_of_residency' && in_array($certificate->status, ['processing', 'ready_for_pickup', 'completed']))
+            @if (in_array($certificate->type, ['certificate_of_residency', 'barangay_clearance']) && in_array($certificate->status, ['processing', 'ready_for_pickup', 'completed']))
                 <flux:button variant="primary" icon="arrow-down-tray" wire:click="openExportModal">
                     {{ __('Download') }}
                 </flux:button>
