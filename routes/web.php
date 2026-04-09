@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\VerifyEmailCodeController;
 use App\Http\Controllers\CertificateDownloadController;
 use App\Models\BarangayProfile;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,10 @@ Route::get('/login', function () {
 Route::get('/register', function () {
     return redirect()->route('home');
 })->name('register');
+
+Route::post('email/verify/code', VerifyEmailCodeController::class)
+    ->middleware(['auth', 'throttle:6,1'])
+    ->name('verification.code');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('pending-approval', 'pages::pending-approval')->name('pending-approval');
@@ -40,6 +45,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('my/certificates', 'pages::resident.certificates.index')->name('resident.certificates.index');
             Route::livewire('my/appointments/create', 'pages::resident.appointments.create')->name('resident.appointments.create');
             Route::livewire('my/appointments', 'pages::resident.appointments.index')->name('resident.appointments.index');
+            Route::livewire('my/notifications', 'pages::resident.notifications')->name('resident.notifications');
         });
 
         // Management Routes (admin and staff only)

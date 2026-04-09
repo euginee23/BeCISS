@@ -8,6 +8,14 @@ new
 #[Title('Pending Approval')]
 #[Layout('layouts::auth')]
 class extends Component {
+    public function mount(): void
+    {
+        $resident = auth()->user()->resident;
+
+        if ($resident && $resident->isApproved()) {
+            $this->redirect(route('dashboard'), navigate: true);
+        }
+    }
 }; ?>
 
 <div class="flex flex-col items-center gap-6 text-center">

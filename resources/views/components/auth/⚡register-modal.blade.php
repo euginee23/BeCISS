@@ -1,6 +1,7 @@
 <?php
 
 use App\Actions\Fortify\CreateNewUser;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -19,6 +20,8 @@ new class extends Component
             'password' => $this->password,
             'password_confirmation' => $this->password_confirmation,
         ]);
+
+        event(new Registered($user));
 
         Auth::login($user);
         session()->regenerate();

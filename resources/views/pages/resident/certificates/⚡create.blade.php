@@ -33,7 +33,7 @@ class extends Component {
     {
         return [
             'type' => ['required', 'in:' . implode(',', array_keys(self::ALLOWED_TYPES))],
-            'purpose' => ['required', 'string', 'max:500'],
+            'purpose' => ['required', 'in:' . implode(',', Certificate::PURPOSE_OPTIONS)],
             'remarks' => ['nullable', 'string', 'max:1000'],
         ];
     }
@@ -98,7 +98,12 @@ class extends Component {
 
                 <flux:field>
                     <flux:label>{{ __('Purpose') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:input wire:model="purpose" required placeholder="{{ __('e.g., Employment, Travel, Bank Transaction') }}" />
+                    <flux:select wire:model="purpose" required>
+                        <option value="">{{ __('Select purpose') }}</option>
+                        @foreach (\App\Models\Certificate::PURPOSE_OPTIONS as $option)
+                            <option value="{{ $option }}">{{ $option }}</option>
+                        @endforeach
+                    </flux:select>
                     <flux:error name="purpose" />
                 </flux:field>
 

@@ -38,6 +38,31 @@ class Certificate extends Model
     ];
 
     /**
+     * Common certificate purposes in the Philippines.
+     */
+    public const array PURPOSE_OPTIONS = [
+        'Employment / Job Application',
+        'Loan Application',
+        'Bank Account Opening',
+        'Scholarship / School Enrollment',
+        'Travel / Passport Application',
+        'Business Permit Application',
+        'Government Benefits (SSS, PhilHealth, GSIS)',
+        'Medical / Health Services',
+        'Legal / Court Purposes',
+        'Senior Citizen Benefits',
+        'PWD (Person with Disability) Benefits',
+        'Voter Registration',
+        'Police Clearance / NBI Clearance',
+        'TESDA / Training Requirements',
+        'Housing / Real Estate Transaction',
+        'Insurance Claim',
+        'Postal ID / ID Application',
+        'Transfer of School / Work Records',
+        'Other',
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>

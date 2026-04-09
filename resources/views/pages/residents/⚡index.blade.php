@@ -1,6 +1,9 @@
 <?php
 
+use App\Mail\ResidentApproved;
 use App\Models\Resident;
+use App\Notifications\ResidentNotification;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -74,12 +77,21 @@ class extends Component {
 
     public function approveResident(int $id): void
     {
-        $resident = Resident::findOrFail($id);
+        $resident = Resident::with('user')->findOrFail($id);
         $resident->update([
             'status' => 'approved',
             'approved_at' => now(),
             'rejection_reason' => null,
         ]);
+
+        Mail::to($resident->user)->send(new ResidentApproved($resident->user, $resident));
+
+        $resident->user?->notify(new ResidentNotification(
+            type: 'registration_approved',
+            title: 'Registration Approved',
+            body: 'Your registration has been approved. You now have full access to BeCISS.',
+            url: route('dashboard'),
+        ));
     }
 
     public function openRejectModal(int $id): void
@@ -96,11 +108,18 @@ class extends Component {
         ]);
 
         if ($this->residentToReject) {
-            $resident = Resident::findOrFail($this->residentToReject);
+            $resident = Resident::with('user')->findOrFail($this->residentToReject);
             $resident->update([
                 'status' => 'rejected',
                 'rejection_reason' => $this->rejectionReason,
             ]);
+
+            $resident->user?->notify(new ResidentNotification(
+                type: 'registration_rejected',
+                title: 'Registration Not Approved',
+                body: 'Your registration was not approved. Reason: ' . $this->rejectionReason,
+                url: route('complete-profile'),
+            ));
 
             $this->showRejectModal = false;
             $this->residentToReject = null;

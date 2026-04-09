@@ -1,10 +1,13 @@
 <?php
 
+use App\Mail\NewPendingRegistration;
+use App\Models\Resident;
+use App\Models\User;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
-use App\Models\Resident;
 
 new
 #[Title('Complete Your Profile')]
@@ -88,7 +91,13 @@ class extends Component {
         if ($resident) {
             $resident->update($data);
         } else {
-            Resident::create($data);
+            $resident = Resident::create($data);
+        }
+
+        $admins = User::where('role', 'admin')->get();
+
+        if ($admins->isNotEmpty()) {
+            Mail::to($admins)->send(new NewPendingRegistration($resident));
         }
 
         $this->redirect(route('pending-approval'), navigate: true);

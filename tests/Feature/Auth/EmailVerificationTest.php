@@ -1,9 +1,9 @@
 <?php
 
+use App\Mail\VerifyEmailCode;
 use App\Models\User;
-use Illuminate\Auth\Events\Verified;
-use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Fortify\Features;
 
 beforeEach(function () {
@@ -18,55 +18,77 @@ test('email verification screen can be rendered', function () {
     $response->assertOk();
 });
 
-test('email can be verified', function () {
+test('email can be verified with valid code', function () {
     $user = User::factory()->unverified()->create();
 
-    Event::fake();
+    Cache::put("email_verify_code_{$user->id}", '123456', now()->addMinutes(10));
 
-    $verificationUrl = URL::temporarySignedRoute(
-        'verification.verify',
-        now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1($user->email)],
-    );
-
-    $response = $this->actingAs($user)->get($verificationUrl);
-
-    Event::assertDispatched(Verified::class);
+    $response = $this->actingAs($user)->post(route('verification.code'), [
+        'code' => '123456',
+    ]);
 
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
-    $response->assertRedirect(route('dashboard', absolute: false).'?verified=1');
+    $response->assertRedirect(config('fortify.home'));
 });
 
-test('email is not verified with invalid hash', function () {
+test('email is not verified with invalid code', function () {
     $user = User::factory()->unverified()->create();
 
-    $verificationUrl = URL::temporarySignedRoute(
-        'verification.verify',
-        now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1('wrong-email')],
-    );
+    Cache::put("email_verify_code_{$user->id}", '123456', now()->addMinutes(10));
 
-    $this->actingAs($user)->get($verificationUrl);
+    $response = $this->actingAs($user)->post(route('verification.code'), [
+        'code' => '999999',
+    ]);
 
     expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
+    $response->assertSessionHasErrors('code');
 });
 
-test('already verified user visiting verification link is redirected without firing event again', function () {
+test('email is not verified with expired code', function () {
+    $user = User::factory()->unverified()->create();
+
+    // Don't put anything in cache — simulates expired
+
+    $response = $this->actingAs($user)->post(route('verification.code'), [
+        'code' => '123456',
+    ]);
+
+    expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
+    $response->assertSessionHasErrors('code');
+});
+
+test('resend verification sends email with code', function () {
+    Mail::fake();
+
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user)->post(route('verification.send'));
+
+    Mail::assertSent(VerifyEmailCode::class, function ($mail) use ($user) {
+        return $mail->user->id === $user->id && $mail->hasTo($user->email);
+    });
+});
+
+test('already verified user is redirected', function () {
     $user = User::factory()->create([
         'email_verified_at' => now(),
     ]);
 
-    Event::fake();
+    Cache::put("email_verify_code_{$user->id}", '123456', now()->addMinutes(10));
 
-    $verificationUrl = URL::temporarySignedRoute(
-        'verification.verify',
-        now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1($user->email)],
-    );
+    $response = $this->actingAs($user)->post(route('verification.code'), [
+        'code' => '123456',
+    ]);
 
-    $this->actingAs($user)->get($verificationUrl)
-        ->assertRedirect(route('dashboard', absolute: false).'?verified=1');
+    $response->assertRedirect(config('fortify.home'));
+});
 
-    expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
-    Event::assertNotDispatched(Verified::class);
+test('verification code must be 6 digits', function () {
+    $user = User::factory()->unverified()->create();
+
+    $response = $this->actingAs($user)->post(route('verification.code'), [
+        'code' => '12345',
+    ]);
+
+    $response->assertSessionHasErrors('code');
 });

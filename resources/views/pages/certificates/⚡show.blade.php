@@ -1,7 +1,11 @@
 <?php
 
+use App\Mail\CertificateReadyForPickup;
+use App\Mail\CertificateRejected;
 use App\Models\Certificate;
+use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -40,6 +44,14 @@ class extends Component {
         ]);
 
         $this->certificate->refresh();
+
+        $user = $this->certificate->resident->user;
+        $user?->notify(new ResidentNotification(
+            type: 'certificate_processing',
+            title: 'Certificate Being Processed',
+            body: 'Your ' . $this->certificate->type_label . ' (' . $this->certificate->certificate_number . ') is now being processed.',
+            url: route('resident.certificates.index'),
+        ));
     }
 
     public function markReadyForPickup(): void
@@ -49,6 +61,12 @@ class extends Component {
         ]);
 
         $this->certificate->refresh();
+        $this->notifyResident(CertificateReadyForPickup::class);
+        $this->notifyResidentDatabase(
+            type: 'certificate_ready',
+            title: 'Certificate Ready for Pickup',
+            body: 'Your ' . $this->certificate->type_label . ' (' . $this->certificate->certificate_number . ') is ready for pickup at the barangay hall.',
+        );
     }
 
     public function openCompleteModal(): void
@@ -71,6 +89,14 @@ class extends Component {
 
         $this->showCompleteModal = false;
         $this->certificate->refresh();
+
+        $user = $this->certificate->resident->user;
+        $user?->notify(new ResidentNotification(
+            type: 'certificate_completed',
+            title: 'Certificate Completed',
+            body: 'Your ' . $this->certificate->type_label . ' (' . $this->certificate->certificate_number . ') has been released and completed.',
+            url: route('resident.certificates.index'),
+        ));
     }
 
     public function openRejectModal(): void
@@ -92,6 +118,33 @@ class extends Component {
 
         $this->showRejectModal = false;
         $this->certificate->refresh();
+        $this->notifyResident(CertificateRejected::class);
+        $this->notifyResidentDatabase(
+            type: 'certificate_rejected',
+            title: 'Certificate Request Rejected',
+            body: 'Your ' . $this->certificate->type_label . ' (' . $this->certificate->certificate_number . ') was rejected. Reason: ' . $this->rejectionReason,
+        );
+    }
+
+    private function notifyResident(string $mailableClass): void
+    {
+        $user = $this->certificate->resident->user;
+
+        if ($user) {
+            Mail::to($user->email)->send(new $mailableClass($user, $this->certificate));
+        }
+    }
+
+    private function notifyResidentDatabase(string $type, string $title, string $body): void
+    {
+        $user = $this->certificate->resident->user;
+
+        $user?->notify(new ResidentNotification(
+            type: $type,
+            title: $title,
+            body: $body,
+            url: route('resident.certificates.index'),
+        ));
     }
 
     public function openExportModal(): void
@@ -154,7 +207,7 @@ class extends Component {
 
         {{-- Action Buttons --}}
         <div class="flex gap-2">
-            @if ($certificate->type === 'certificate_of_residency')
+            @if ($certificate->type === 'certificate_of_residency' && in_array($certificate->status, ['processing', 'ready_for_pickup', 'completed']))
                 <flux:button variant="primary" icon="arrow-down-tray" wire:click="openExportModal">
                     {{ __('Download') }}
                 </flux:button>

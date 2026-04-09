@@ -1,7 +1,11 @@
 <?php
 
+use App\Mail\AppointmentCancelled;
+use App\Mail\AppointmentCompleted;
+use App\Mail\AppointmentConfirmed;
 use App\Models\Appointment;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -33,6 +37,7 @@ class extends Component {
         ]);
 
         $this->appointment->refresh();
+        $this->notifyResident(AppointmentConfirmed::class);
     }
 
     public function startAppointment(): void
@@ -65,6 +70,7 @@ class extends Component {
 
         $this->showCompleteModal = false;
         $this->appointment->refresh();
+        $this->notifyResident(AppointmentCompleted::class);
     }
 
     public function markNoShow(): void
@@ -91,6 +97,16 @@ class extends Component {
 
         $this->showCancelModal = false;
         $this->appointment->refresh();
+        $this->notifyResident(AppointmentCancelled::class);
+    }
+
+    private function notifyResident(string $mailableClass): void
+    {
+        $user = $this->appointment->resident->user;
+
+        if ($user) {
+            Mail::to($user->email)->send(new $mailableClass($user, $this->appointment));
+        }
     }
 }; ?>
 

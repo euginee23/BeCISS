@@ -41,6 +41,11 @@ new class extends Component
         RateLimiter::clear('login:'.$throttleKey);
 
         session()->regenerate();
+
+        if (! Auth::user()->hasVerifiedEmail()) {
+            Auth::user()->sendEmailVerificationNotification();
+        }
+
         $this->redirect(route('dashboard'), navigate: true);
     }
 };

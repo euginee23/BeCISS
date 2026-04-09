@@ -48,6 +48,9 @@
                             <flux:button variant="ghost" icon="bars-3" size="sm" />
                         </flux:modal.trigger>
 
+                        {{-- Notification Bell --}}
+                        <livewire:notification-bell />
+
                         {{-- Profile Dropdown --}}
                         <flux:dropdown position="bottom" align="end">
                             <flux:profile
@@ -101,6 +104,11 @@
                    class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('resident.appointments.*') ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800' }}">
                     <flux:icon name="calendar" class="size-5" />
                     {{ __('My Appointments') }}
+                </a>
+                <a href="{{ route('resident.notifications') }}" wire:navigate
+                   class="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors {{ request()->routeIs('resident.notifications') ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30' : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800' }}">
+                    <flux:icon name="bell" class="size-5" />
+                    {{ __('Notifications') }}
                 </a>
                 <flux:separator class="my-2" />
                 <a href="{{ route('profile.edit') }}" wire:navigate

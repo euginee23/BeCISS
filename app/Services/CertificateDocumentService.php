@@ -36,7 +36,7 @@ class CertificateDocumentService
         $barangay = BarangayProfile::get();
 
         $residentAddress = collect([
-            $resident->purok,
+            $resident->purok ? "Purok {$resident->purok}." : null,
             $resident->address,
         ])->filter()->implode(', ');
 

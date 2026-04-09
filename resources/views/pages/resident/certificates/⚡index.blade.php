@@ -166,12 +166,6 @@ class extends Component
                                     @endif
                                 </span>
                             </div>
-
-                            @if($cert->type === 'certificate_of_residency')
-                                <flux:button variant="ghost" size="sm" icon="arrow-down-tray" wire:click="openExportModal({{ $cert->id }})">
-                                    {{ __('Download') }}
-                                </flux:button>
-                            @endif
                         </div>
                     </div>
                 </div>
