@@ -47,6 +47,7 @@ test('sync creates all predefined service fee records', function () {
 });
 
 test('sync does not overwrite existing fee amounts', function () {
+    ServiceFee::sync();
     ServiceFee::where('service_type', 'barangay_clearance')->update(['fee' => 150.00]);
 
     ServiceFee::sync();

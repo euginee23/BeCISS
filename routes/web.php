@@ -57,6 +57,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::middleware(['role:admin'])->group(function () {
             Route::livewire('admin/settings', 'pages::admin.settings.barangay')->name('admin.settings.barangay');
             Route::livewire('admin/settings/service-fees', 'pages::admin.settings.service-fees')->name('admin.settings.service-fees');
+
+            // Staff Management
+            Route::livewire('staff', 'pages::staff.index')->name('staff.index');
+            Route::livewire('staff/create', 'pages::staff.create')->name('staff.create');
+            Route::livewire('staff/{user}/edit', 'pages::staff.edit')->name('staff.edit');
         });
 
         // Resident-only routes
@@ -73,28 +78,36 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Management Routes (admin and staff only)
         Route::middleware(['role:admin,staff'])->group(function () {
             // Residents Management
-            Route::livewire('residents', 'pages::residents.index')->name('residents.index');
-            Route::livewire('residents/create', 'pages::residents.create')->name('residents.create');
-            Route::livewire('residents/{resident}', 'pages::residents.show')->name('residents.show');
-            Route::livewire('residents/{resident}/edit', 'pages::residents.edit')->name('residents.edit');
+            Route::middleware(['permission:residents'])->group(function () {
+                Route::livewire('residents', 'pages::residents.index')->name('residents.index');
+                Route::livewire('residents/create', 'pages::residents.create')->name('residents.create');
+                Route::livewire('residents/{resident}', 'pages::residents.show')->name('residents.show');
+                Route::livewire('residents/{resident}/edit', 'pages::residents.edit')->name('residents.edit');
+            });
 
             // Certificates Management
-            Route::livewire('certificates', 'pages::certificates.index')->name('certificates.index');
-            Route::livewire('certificates/create', 'pages::certificates.create')->name('certificates.create');
-            Route::livewire('certificates/{certificate}', 'pages::certificates.show')->name('certificates.show');
-            Route::livewire('certificates/{certificate}/edit', 'pages::certificates.edit')->name('certificates.edit');
+            Route::middleware(['permission:certificates'])->group(function () {
+                Route::livewire('certificates', 'pages::certificates.index')->name('certificates.index');
+                Route::livewire('certificates/create', 'pages::certificates.create')->name('certificates.create');
+                Route::livewire('certificates/{certificate}', 'pages::certificates.show')->name('certificates.show');
+                Route::livewire('certificates/{certificate}/edit', 'pages::certificates.edit')->name('certificates.edit');
+            });
 
             // Appointments Management
-            Route::livewire('appointments', 'pages::appointments.index')->name('appointments.index');
-            Route::livewire('appointments/create', 'pages::appointments.create')->name('appointments.create');
-            Route::livewire('appointments/{appointment}', 'pages::appointments.show')->name('appointments.show');
-            Route::livewire('appointments/{appointment}/edit', 'pages::appointments.edit')->name('appointments.edit');
+            Route::middleware(['permission:appointments'])->group(function () {
+                Route::livewire('appointments', 'pages::appointments.index')->name('appointments.index');
+                Route::livewire('appointments/create', 'pages::appointments.create')->name('appointments.create');
+                Route::livewire('appointments/{appointment}', 'pages::appointments.show')->name('appointments.show');
+                Route::livewire('appointments/{appointment}/edit', 'pages::appointments.edit')->name('appointments.edit');
+            });
 
             // Blotters Management
-            Route::livewire('blotters', 'pages::blotters.index')->name('blotters.index');
-            Route::livewire('blotters/create', 'pages::blotters.create')->name('blotters.create');
-            Route::livewire('blotters/{blotter}', 'pages::blotters.show')->name('blotters.show');
-            Route::livewire('blotters/{blotter}/edit', 'pages::blotters.edit')->name('blotters.edit');
+            Route::middleware(['permission:blotters'])->group(function () {
+                Route::livewire('blotters', 'pages::blotters.index')->name('blotters.index');
+                Route::livewire('blotters/create', 'pages::blotters.create')->name('blotters.create');
+                Route::livewire('blotters/{blotter}', 'pages::blotters.show')->name('blotters.show');
+                Route::livewire('blotters/{blotter}/edit', 'pages::blotters.edit')->name('blotters.edit');
+            });
         });
     });
 });

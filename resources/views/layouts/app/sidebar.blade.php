@@ -25,23 +25,34 @@
                     $pendingBlotters = \App\Models\Blotter::where('status', 'pending')->count();
                 @endphp
                 <flux:sidebar.group :heading="__('Management')" class="grid">
+                    @if(auth()->user()->hasPermission('residents'))
                     <flux:sidebar.item icon="users" :href="route('residents.index')" :current="request()->routeIs('residents.*')" wire:navigate :badge="$pendingResidents ?: null" badge:color="amber">
                         {{ __('Residents') }}
                     </flux:sidebar.item>
+                    @endif
+                    @if(auth()->user()->hasPermission('certificates'))
                     <flux:sidebar.item icon="document-text" :href="route('certificates.index')" :current="request()->routeIs('certificates.*')" wire:navigate :badge="$pendingCertificates ?: null" badge:color="amber">
                         {{ __('Certificates') }}
                     </flux:sidebar.item>
+                    @endif
+                    @if(auth()->user()->hasPermission('appointments'))
                     <flux:sidebar.item icon="calendar" :href="route('appointments.index')" :current="request()->routeIs('appointments.*')" wire:navigate :badge="$scheduledAppointments ?: null" badge:color="amber">
                         {{ __('Appointments') }}
                     </flux:sidebar.item>
+                    @endif
+                    @if(auth()->user()->hasPermission('blotters'))
                     <flux:sidebar.item icon="shield-exclamation" :href="route('blotters.index')" :current="request()->routeIs('blotters.*')" wire:navigate :badge="$pendingBlotters ?: null" badge:color="amber">
                         {{ __('Blotters') }}
                     </flux:sidebar.item>
+                    @endif
                 </flux:sidebar.group>
                 @endif
 
                 @if(auth()->user()->isAdmin())
                 <flux:sidebar.group :heading="__('Administration')" class="grid">
+                    <flux:sidebar.item icon="user-group" :href="route('staff.index')" :current="request()->routeIs('staff.*')" wire:navigate>
+                        {{ __('Staff') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="building-office-2" :href="route('admin.settings.barangay')" :current="request()->routeIs('admin.settings.barangay')" wire:navigate>
                         {{ __('Barangay Settings') }}
                     </flux:sidebar.item>

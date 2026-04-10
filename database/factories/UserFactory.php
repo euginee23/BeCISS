@@ -51,16 +51,20 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role' => 'admin',
+            'permissions' => User::STAFF_RESOURCES,
         ]);
     }
 
     /**
      * Set the user as staff.
+     *
+     * @param  list<string>|null  $permissions
      */
-    public function staff(): static
+    public function staff(?array $permissions = null): static
     {
         return $this->state(fn (array $attributes) => [
             'role' => 'staff',
+            'permissions' => $permissions ?? User::STAFF_RESOURCES,
         ]);
     }
 

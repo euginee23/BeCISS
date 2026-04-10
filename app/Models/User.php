@@ -18,6 +18,9 @@ class User extends Authenticatable implements MustVerifyEmail
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    /** @var list<string> */
+    public const STAFF_RESOURCES = ['residents', 'certificates', 'appointments', 'blotters'];
+
     /**
      * The attributes that are mass assignable.
      *
@@ -28,6 +31,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'role',
+        'permissions',
     ];
 
     /**
@@ -50,6 +54,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'permissions' => 'array',
         ];
     }
 
@@ -99,6 +104,19 @@ class User extends Authenticatable implements MustVerifyEmail
             ->take(2)
             ->map(fn ($word) => Str::substr($word, 0, 1))
             ->implode('');
+    }
+
+    /**
+     * Check if user has permission to access a resource.
+     * Admins always have access; staff check the permissions array.
+     */
+    public function hasPermission(string $resource): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        return in_array($resource, $this->permissions ?? [], true);
     }
 
     /**
