@@ -102,7 +102,7 @@ test('can download certificate regardless of status', function () {
 
 test('cannot download certificate type without template', function () {
     $user = User::factory()->admin()->create();
-    $certificate = Certificate::factory()->indigency()->completed()->create();
+    $certificate = Certificate::factory()->completed()->create(['type' => 'business_permit']);
 
     $this->actingAs($user)
         ->get(route('certificates.download', $certificate).'?'.http_build_query([
@@ -267,4 +267,91 @@ test('barangay clearance fills correct placeholders in generated docx', function
         ->toContain('Dela Cruz')
         ->toContain('Purok 3., Zone 5, Some Street')
         ->toContain('April 1, 2026');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Barangay Indigency
+|--------------------------------------------------------------------------
+*/
+
+test('admin can download barangay indigency', function () {
+    $user = User::factory()->admin()->create();
+    $certificate = Certificate::factory()->indigency()->completed()->create();
+
+    $this->actingAs($user)
+        ->get(route('certificates.download', $certificate).'?'.http_build_query([
+            'format' => 'docx',
+            'date_of_issuance' => '2026-04-10',
+        ]))
+        ->assertSuccessful();
+});
+
+test('barangay indigency docx has correct content type', function () {
+    $user = User::factory()->admin()->create();
+    $certificate = Certificate::factory()->indigency()->completed()->create();
+
+    $response = $this->actingAs($user)
+        ->get(route('certificates.download', $certificate).'?'.http_build_query([
+            'format' => 'docx',
+            'date_of_issuance' => '2026-04-10',
+        ]));
+
+    $response->assertSuccessful();
+    $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+});
+
+test('barangay indigency filename includes certificate number', function () {
+    $user = User::factory()->admin()->create();
+    $certificate = Certificate::factory()->indigency()->completed()->create();
+
+    $response = $this->actingAs($user)
+        ->get(route('certificates.download', $certificate).'?'.http_build_query([
+            'format' => 'docx',
+            'date_of_issuance' => '2026-04-10',
+        ]));
+
+    $disposition = $response->headers->get('content-disposition');
+    expect($disposition)
+        ->toContain('Certificate_of_Indigency')
+        ->toContain($certificate->certificate_number);
+});
+
+test('barangay indigency fills correct placeholders in generated docx', function () {
+    $user = User::factory()->admin()->create();
+    $resident = Resident::factory()->create([
+        'first_name' => 'Maria',
+        'last_name' => 'Santos',
+        'address' => 'Zone 2, Main Road',
+        'purok' => '1',
+    ]);
+    $certificate = Certificate::factory()->indigency()->completed()->create([
+        'resident_id' => $resident->id,
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get(route('certificates.download', $certificate).'?'.http_build_query([
+            'format' => 'docx',
+            'date_of_issuance' => '2026-04-10',
+        ]));
+
+    $response->assertSuccessful();
+
+    $tempPath = sys_get_temp_dir().'/indigency_test_'.uniqid().'.docx';
+    file_put_contents($tempPath, $response->streamedContent());
+
+    $zip = new ZipArchive;
+    $zip->open($tempPath);
+    $xml = $zip->getFromName('word/document.xml');
+    $zip->close();
+
+    @unlink($tempPath);
+
+    expect($xml)
+        ->toContain('Maria')
+        ->toContain('Santos')
+        ->toContain('Purok 1., Zone 2, Main Road')
+        ->toContain('10')
+        ->toContain('April 2026')
+        ->toContain('April 10, 2026');
 });

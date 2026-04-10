@@ -18,6 +18,7 @@ class CertificateDocumentService
     private const array TEMPLATES = [
         'certificate_of_residency' => 'BARANGAY_RESIDENCY_TEMPLATE.docx',
         'barangay_clearance' => 'BARANGAY_CLEARANCE_TEMPLATE.docx',
+        'certificate_of_indigency' => 'BARANGAY_IDIGENCY_TEMPLATE.docx',
         'blotter' => 'BARANGAY_BLOTTER_TEMPLATE.docx',
     ];
 
@@ -95,6 +96,8 @@ class CertificateDocumentService
             $resident->address,
         ])->filter()->implode(', ');
 
+        $issuanceDate = Carbon::parse($formData['date_of_issuance']);
+
         return match ($certificate->type) {
             'barangay_clearance' => [
                 'resident_name' => $resident->full_name,
@@ -102,7 +105,18 @@ class CertificateDocumentService
                 'barangay_name' => $barangay->barangay_name,
                 'municipality_name' => $barangay->municipality ?? '',
                 'province_name' => $barangay->province ?? '',
-                'issued_full_date' => Carbon::parse($formData['date_of_issuance'])->format('F j, Y'),
+                'issued_full_date' => $issuanceDate->format('F j, Y'),
+                'punong_barangay_name' => $barangay->captain_name ?? '',
+            ],
+            'certificate_of_indigency' => [
+                'resident_name' => $resident->full_name,
+                'resident_address' => $residentAddress,
+                'barangay_name' => $barangay->barangay_name,
+                'municipality_name' => $barangay->municipality ?? '',
+                'province_name' => $barangay->province ?? '',
+                'issue_day' => $issuanceDate->format('j'),
+                'issue_month' => $issuanceDate->format('F Y'),
+                'date_issued' => $issuanceDate->format('F j, Y'),
                 'punong_barangay_name' => $barangay->captain_name ?? '',
             ],
             default => [
@@ -111,7 +125,7 @@ class CertificateDocumentService
                 'barangay_name' => $barangay->barangay_name,
                 'municipality_name' => $barangay->municipality ?? '',
                 'province_name' => $barangay->province ?? '',
-                'issued_full_date' => Carbon::parse($formData['date_of_issuance'])->format('F j, Y'),
+                'issued_full_date' => $issuanceDate->format('F j, Y'),
                 'punong_barangay_name' => $barangay->captain_name ?? '',
             ],
         };
