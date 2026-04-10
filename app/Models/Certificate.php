@@ -66,10 +66,17 @@ class Certificate extends Model
      */
     protected $fillable = [
         'resident_id',
+        'is_walkin',
+        'walkin_name',
+        'walkin_purok',
+        'walkin_street',
+        'walkin_house_number',
+        'walkin_contact',
         'processed_by',
         'certificate_number',
         'type',
         'purpose',
+        'purpose_other',
         'status',
         'remarks',
         'processed_at',
@@ -89,12 +96,61 @@ class Certificate extends Model
     protected function casts(): array
     {
         return [
+            'is_walkin' => 'boolean',
             'processed_at' => 'datetime',
             'completed_at' => 'datetime',
             'rejected_at' => 'datetime',
             'fee' => 'decimal:2',
             'is_paid' => 'boolean',
         ];
+    }
+
+    /**
+     * Get the display value for purpose.
+     */
+    public function getPurposeLabelAttribute(): string
+    {
+        if ($this->purpose === 'Other' && $this->purpose_other) {
+            return $this->purpose_other;
+        }
+
+        return $this->purpose;
+    }
+
+    /**
+     * Determine if this certificate was requested by a walk-in.
+     */
+    public function getIsWalkinAttribute(): bool
+    {
+        return (bool) ($this->attributes['is_walkin'] ?? false) || is_null($this->resident_id);
+    }
+
+    /**
+     * Get requester display name.
+     */
+    public function getRequesterNameAttribute(): string
+    {
+        if ($this->is_walkin) {
+            return $this->walkin_name ?: 'Walk-in Requester';
+        }
+
+        return $this->resident?->full_name ?? 'Unknown Resident';
+    }
+
+    /**
+     * Get requester display address.
+     */
+    public function getRequesterAddressAttribute(): string
+    {
+        if (! $this->is_walkin) {
+            return $this->resident?->address ?? '—';
+        }
+
+        return collect([
+            $this->walkin_purok ? "Purok {$this->walkin_purok}" : null,
+            $this->walkin_house_number,
+            $this->walkin_street,
+        ])->filter()->implode(', ') ?: '—';
     }
 
     /**

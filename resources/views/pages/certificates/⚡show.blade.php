@@ -45,7 +45,7 @@ class extends Component {
 
         $this->certificate->refresh();
 
-        $user = $this->certificate->resident->user;
+        $user = $this->certificate->resident?->user;
         $user?->notify(new ResidentNotification(
             type: 'certificate_processing',
             title: 'Certificate Being Processed',
@@ -90,7 +90,7 @@ class extends Component {
         $this->showCompleteModal = false;
         $this->certificate->refresh();
 
-        $user = $this->certificate->resident->user;
+        $user = $this->certificate->resident?->user;
         $user?->notify(new ResidentNotification(
             type: 'certificate_completed',
             title: 'Certificate Completed',
@@ -128,7 +128,7 @@ class extends Component {
 
     private function notifyResident(string $mailableClass): void
     {
-        $user = $this->certificate->resident->user;
+        $user = $this->certificate->resident?->user;
 
         if ($user) {
             Mail::to($user->email)->send(new $mailableClass($user, $this->certificate));
@@ -137,7 +137,7 @@ class extends Component {
 
     private function notifyResidentDatabase(string $type, string $title, string $body): void
     {
-        $user = $this->certificate->resident->user;
+        $user = $this->certificate->resident?->user;
 
         $user?->notify(new ResidentNotification(
             type: $type,
@@ -149,10 +149,11 @@ class extends Component {
 
     public function openExportModal(): void
     {
+        $this->resetValidation();
         $this->dateOfIssuance = now()->format('Y-m-d');
         $this->ctcNo = '';
         $this->ctcPlaceIssued = '';
-        $this->ctcDateIssued = '';
+        $this->ctcDateIssued = now()->format('Y-m-d');
         $this->exportFormat = 'docx';
         $this->showExportModal = true;
     }
@@ -161,9 +162,9 @@ class extends Component {
     {
         $this->validate([
             'dateOfIssuance' => ['required', 'date'],
-            'ctcNo' => ['nullable', 'string', 'max:100'],
-            'ctcPlaceIssued' => ['nullable', 'string', 'max:200'],
-            'ctcDateIssued' => ['nullable', 'date'],
+            'ctcNo' => ['required', 'string', 'max:100'],
+            'ctcPlaceIssued' => ['required', 'string', 'max:200'],
+            'ctcDateIssued' => ['required', 'date'],
             'exportFormat' => ['required', 'in:docx,pdf'],
         ]);
 
@@ -236,32 +237,45 @@ class extends Component {
     </div>
 
     <div class="grid gap-6 lg:grid-cols-2">
-        {{-- Resident Information --}}
+        {{-- Requester Information --}}
         <div class="rounded-lg border border-zinc-200 p-6 dark:border-zinc-700">
-            <flux:heading size="lg" class="mb-4">{{ __('Resident Information') }}</flux:heading>
+            <flux:heading size="lg" class="mb-4">{{ __('Requester Information') }}</flux:heading>
 
             <div class="flex items-center gap-4 mb-4">
-                <flux:avatar size="lg" name="{{ $certificate->resident->full_name }}" />
+                <flux:avatar size="lg" name="{{ $certificate->requester_name }}" />
                 <div>
-                    <flux:heading size="base">{{ $certificate->resident->full_name }}</flux:heading>
-                    <flux:text class="text-zinc-500">{{ $certificate->resident->address }}</flux:text>
+                    <flux:heading size="base">{{ $certificate->requester_name }}</flux:heading>
+                    <flux:text class="text-zinc-500">{{ $certificate->requester_address }}</flux:text>
                 </div>
             </div>
 
-            <dl class="space-y-3">
-                <div class="flex justify-between">
-                    <dt class="text-zinc-500">{{ __('Age') }}</dt>
-                    <dd class="font-medium">{{ $certificate->resident->age }} {{ __('years old') }}</dd>
-                </div>
-                <div class="flex justify-between">
-                    <dt class="text-zinc-500">{{ __('Gender') }}</dt>
-                    <dd class="font-medium">{{ ucfirst($certificate->resident->gender) }}</dd>
-                </div>
-                <div class="flex justify-between">
-                    <dt class="text-zinc-500">{{ __('Contact') }}</dt>
-                    <dd class="font-medium">{{ $certificate->resident->contact_number ?? '—' }}</dd>
-                </div>
-            </dl>
+            @if (! $certificate->is_walkin && $certificate->resident)
+                <dl class="space-y-3">
+                    <div class="flex justify-between">
+                        <dt class="text-zinc-500">{{ __('Age') }}</dt>
+                        <dd class="font-medium">{{ $certificate->resident->age }} {{ __('years old') }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-zinc-500">{{ __('Gender') }}</dt>
+                        <dd class="font-medium">{{ ucfirst($certificate->resident->gender) }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-zinc-500">{{ __('Contact') }}</dt>
+                        <dd class="font-medium">{{ $certificate->resident->contact_number ?? '—' }}</dd>
+                    </div>
+                </dl>
+            @else
+                <dl class="space-y-3">
+                    <div class="flex justify-between">
+                        <dt class="text-zinc-500">{{ __('Requester Type') }}</dt>
+                        <dd class="font-medium">{{ __('Walk-in / Unregistered') }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-zinc-500">{{ __('Contact') }}</dt>
+                        <dd class="font-medium">{{ $certificate->walkin_contact ?: '—' }}</dd>
+                    </div>
+                </dl>
+            @endif
         </div>
 
         {{-- Certificate Details --}}
@@ -279,7 +293,7 @@ class extends Component {
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-zinc-500">{{ __('Purpose') }}</dt>
-                    <dd class="font-medium text-right max-w-xs">{{ $certificate->purpose }}</dd>
+                    <dd class="font-medium text-right max-w-xs">{{ $certificate->purpose_label }}</dd>
                 </div>
                 <flux:separator />
                 <div class="flex justify-between">
@@ -436,20 +450,20 @@ class extends Component {
             </flux:field>
 
             <flux:field>
-                <flux:label>{{ __('CTC No.') }}</flux:label>
-                <flux:input wire:model="ctcNo" placeholder="e.g. 12345678" />
+                <flux:label>{{ __('CTC No.') }} <span class="text-red-500">*</span></flux:label>
+                <flux:input wire:model="ctcNo" placeholder="e.g. 12345678" required />
                 <flux:error name="ctcNo" />
             </flux:field>
 
             <flux:field>
-                <flux:label>{{ __('CTC Place Issued') }}</flux:label>
-                <flux:input wire:model="ctcPlaceIssued" placeholder="e.g. Municipality of ..." />
+                <flux:label>{{ __('CTC Place Issued') }} <span class="text-red-500">*</span></flux:label>
+                <flux:input wire:model="ctcPlaceIssued" placeholder="e.g. Municipality of ..." required />
                 <flux:error name="ctcPlaceIssued" />
             </flux:field>
 
             <flux:field>
-                <flux:label>{{ __('CTC Date Issued') }}</flux:label>
-                <flux:input type="date" wire:model="ctcDateIssued" />
+                <flux:label>{{ __('CTC Date Issued') }} <span class="text-red-500">*</span></flux:label>
+                <flux:input type="date" wire:model="ctcDateIssued" required />
                 <flux:error name="ctcDateIssued" />
             </flux:field>
 

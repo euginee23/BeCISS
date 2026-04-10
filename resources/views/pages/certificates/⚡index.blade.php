@@ -78,14 +78,16 @@ class extends Component {
     {
         return Certificate::query()
             ->with('resident')
-            ->when($this->search, fn ($query, $search) => $query
-                ->where('certificate_number', 'like', "%{$search}%")
-                ->orWhere('purpose', 'like', "%{$search}%")
-                ->orWhereHas('resident', fn ($q) => $q
-                    ->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                )
-            )
+            ->when($this->search, fn ($query, $search) => $query->where(function ($sub) use ($search) {
+                $sub->where('certificate_number', 'like', "%{$search}%")
+                    ->orWhere('purpose', 'like', "%{$search}%")
+                    ->orWhere('purpose_other', 'like', "%{$search}%")
+                    ->orWhere('walkin_name', 'like', "%{$search}%")
+                    ->orWhereHas('resident', fn ($q) => $q
+                        ->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                    );
+            }))
             ->when($this->status, fn ($query, $status) => $query->where('status', $status))
             ->when($this->type, fn ($query, $type) => $query->where('type', $type))
             ->orderBy($this->sortBy, $this->sortDirection)
@@ -133,7 +135,7 @@ class extends Component {
             <flux:table.column sortable :sorted="$sortBy === 'certificate_number'" :direction="$sortDirection" wire:click="sort('certificate_number')">
                 {{ __('Certificate #') }}
             </flux:table.column>
-            <flux:table.column>{{ __('Resident') }}</flux:table.column>
+            <flux:table.column>{{ __('Requester') }}</flux:table.column>
             <flux:table.column sortable :sorted="$sortBy === 'type'" :direction="$sortDirection" wire:click="sort('type')">
                 {{ __('Type') }}
             </flux:table.column>
@@ -155,12 +157,17 @@ class extends Component {
                     </flux:table.cell>
                     <flux:table.cell>
                         <div class="flex items-center gap-3">
-                            <flux:avatar size="xs" name="{{ $certificate->resident->full_name }}" />
-                            {{ $certificate->resident->full_name }}
+                            <flux:avatar size="xs" name="{{ $certificate->requester_name }}" />
+                            <div>
+                                <div>{{ $certificate->requester_name }}</div>
+                                @if ($certificate->is_walkin)
+                                    <div class="text-xs text-zinc-500">{{ __('Walk-in') }}</div>
+                                @endif
+                            </div>
                         </div>
                     </flux:table.cell>
                     <flux:table.cell>{{ $certificate->type_label }}</flux:table.cell>
-                    <flux:table.cell class="max-w-xs truncate">{{ $certificate->purpose }}</flux:table.cell>
+                    <flux:table.cell class="max-w-xs truncate">{{ $certificate->purpose_label }}</flux:table.cell>
                     <flux:table.cell>
                         <flux:badge size="sm" :color="$certificate->status_color">
                             {{ $certificate->status_label }}

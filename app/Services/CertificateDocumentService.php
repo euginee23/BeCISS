@@ -92,16 +92,26 @@ class CertificateDocumentService
         $resident = $certificate->resident;
         $barangay = BarangayProfile::get();
 
-        $residentAddress = collect([
-            $resident->purok ? "Purok {$resident->purok}." : null,
-            $resident->address,
-        ])->filter()->implode(', ');
+        $residentName = $certificate->is_walkin
+            ? ($certificate->walkin_name ?: 'Walk-in Requester')
+            : ($resident?->full_name ?? 'Unknown Resident');
+
+        $residentAddress = $certificate->is_walkin
+            ? collect([
+                $certificate->walkin_purok ? "Purok {$certificate->walkin_purok}." : null,
+                $certificate->walkin_house_number,
+                $certificate->walkin_street,
+            ])->filter()->implode(', ')
+            : collect([
+                $resident?->purok ? "Purok {$resident->purok}." : null,
+                $resident?->address,
+            ])->filter()->implode(', ');
 
         $issuanceDate = Carbon::parse($formData['date_of_issuance']);
 
         return match ($certificate->type) {
             'barangay_clearance' => [
-                'resident_name' => $resident->full_name,
+                'resident_name' => $residentName,
                 'resident_address' => $residentAddress,
                 'barangay_name' => $barangay->barangay_name,
                 'municipality_name' => $barangay->municipality ?? '',
@@ -110,7 +120,7 @@ class CertificateDocumentService
                 'punong_barangay_name' => $barangay->captain_name ?? '',
             ],
             'certificate_of_indigency' => [
-                'resident_name' => $resident->full_name,
+                'resident_name' => $residentName,
                 'resident_address' => $residentAddress,
                 'barangay_name' => $barangay->barangay_name,
                 'municipality_name' => $barangay->municipality ?? '',
@@ -121,7 +131,7 @@ class CertificateDocumentService
                 'punong_barangay_name' => $barangay->captain_name ?? '',
             ],
             'barangay_certification' => [
-                'resident_name' => $resident->full_name,
+                'resident_name' => $residentName,
                 'resident_address' => $residentAddress,
                 'barangay_name' => $barangay->barangay_name,
                 'municipality_name' => $barangay->municipality ?? '',
@@ -135,7 +145,7 @@ class CertificateDocumentService
                 'punong_barangay_name' => $barangay->captain_name ?? '',
             ],
             default => [
-                'resident_name' => $resident->full_name,
+                'resident_name' => $residentName,
                 'resident_address' => $residentAddress,
                 'barangay_name' => $barangay->barangay_name,
                 'municipality_name' => $barangay->municipality ?? '',

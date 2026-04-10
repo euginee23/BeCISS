@@ -90,6 +90,29 @@ describe('certificates create', function () {
         ]);
     });
 
+    it('can create a walk-in certificate request', function () {
+        Livewire::actingAs($this->admin)
+            ->test('pages::certificates.create')
+            ->set('complainantType', 'walkin')
+            ->set('walkin_name', 'Juan Dela Cruz')
+            ->set('walkin_purok', '3')
+            ->set('walkin_street', 'Mabini Street')
+            ->set('walkin_house_number', '12')
+            ->set('walkin_contact', '09123456789')
+            ->set('type', 'barangay_clearance')
+            ->set('purpose', 'Employment / Job Application')
+            ->call('save')
+            ->assertRedirect(route('certificates.index'));
+
+        $this->assertDatabaseHas('certificates', [
+            'resident_id' => null,
+            'is_walkin' => true,
+            'walkin_name' => 'Juan Dela Cruz',
+            'type' => 'barangay_clearance',
+            'status' => 'pending',
+        ]);
+    });
+
     it('validates required fields', function () {
         Livewire::actingAs($this->admin)
             ->test('pages::certificates.create')
@@ -97,6 +120,19 @@ describe('certificates create', function () {
             ->set('type', '')
             ->call('save')
             ->assertHasErrors(['resident_id', 'type', 'purpose']);
+    });
+
+    it('requires purpose_other when purpose is Other', function () {
+        $resident = Resident::factory()->create();
+
+        Livewire::actingAs($this->admin)
+            ->test('pages::certificates.create')
+            ->set('resident_id', $resident->id)
+            ->set('type', 'barangay_certification')
+            ->set('purpose', 'Other')
+            ->set('purpose_other', '')
+            ->call('save')
+            ->assertHasErrors(['purpose_other']);
     });
 });
 
@@ -161,6 +197,20 @@ describe('certificates workflow', function () {
         expect($certificate->status)->toBe('rejected')
             ->and($certificate->rejection_reason)->toBe('Incomplete requirements');
     });
+
+    it('requires ctc fields before exporting certificate', function () {
+        $certificate = Certificate::factory()->processing()->create();
+
+        Livewire::actingAs($this->admin)
+            ->test('pages::certificates.show', ['certificate' => $certificate])
+            ->set('dateOfIssuance', now()->format('Y-m-d'))
+            ->set('ctcNo', '')
+            ->set('ctcPlaceIssued', '')
+            ->set('ctcDateIssued', '')
+            ->set('exportFormat', 'docx')
+            ->call('downloadCertificate')
+            ->assertHasErrors(['ctcNo', 'ctcPlaceIssued', 'ctcDateIssued']);
+    });
 });
 
 describe('certificate edit', function () {
@@ -170,12 +220,36 @@ describe('certificate edit', function () {
         Livewire::actingAs($this->admin)
             ->test('pages::certificates.edit', ['certificate' => $certificate])
             ->set('purpose', 'Other')
+            ->set('purpose_other', 'School enrollment requirement')
             ->call('save')
             ->assertRedirect(route('certificates.show', $certificate));
 
         $this->assertDatabaseHas('certificates', [
             'id' => $certificate->id,
             'purpose' => 'Other',
+            'purpose_other' => 'School enrollment requirement',
+        ]);
+    });
+
+    it('can update a pending certificate to walk-in requester', function () {
+        $certificate = Certificate::factory()->create(['status' => 'pending']);
+
+        Livewire::actingAs($this->admin)
+            ->test('pages::certificates.edit', ['certificate' => $certificate])
+            ->set('complainantType', 'walkin')
+            ->set('walkin_name', 'Pedro Santos')
+            ->set('walkin_street', 'Rizal Street')
+            ->set('walkin_contact', '09998887777')
+            ->set('type', 'barangay_clearance')
+            ->set('purpose', 'Employment / Job Application')
+            ->call('save')
+            ->assertRedirect(route('certificates.show', $certificate));
+
+        $this->assertDatabaseHas('certificates', [
+            'id' => $certificate->id,
+            'resident_id' => null,
+            'is_walkin' => true,
+            'walkin_name' => 'Pedro Santos',
         ]);
     });
 });
