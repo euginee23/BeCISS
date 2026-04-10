@@ -22,6 +22,7 @@
                     $pendingResidents    = \App\Models\Resident::pending()->count();
                     $pendingCertificates = \App\Models\Certificate::where('status', 'pending')->count();
                     $scheduledAppointments = \App\Models\Appointment::where('status', 'scheduled')->count();
+                    $pendingBlotters = \App\Models\Blotter::where('status', 'pending')->count();
                 @endphp
                 <flux:sidebar.group :heading="__('Management')" class="grid">
                     <flux:sidebar.item icon="users" :href="route('residents.index')" :current="request()->routeIs('residents.*')" wire:navigate :badge="$pendingResidents ?: null" badge:color="amber">
@@ -33,6 +34,9 @@
                     <flux:sidebar.item icon="calendar" :href="route('appointments.index')" :current="request()->routeIs('appointments.*')" wire:navigate :badge="$scheduledAppointments ?: null" badge:color="amber">
                         {{ __('Appointments') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="shield-exclamation" :href="route('blotters.index')" :current="request()->routeIs('blotters.*')" wire:navigate :badge="$pendingBlotters ?: null" badge:color="amber">
+                        {{ __('Blotters') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
                 @endif
 
@@ -40,6 +44,9 @@
                 <flux:sidebar.group :heading="__('Administration')" class="grid">
                     <flux:sidebar.item icon="building-office-2" :href="route('admin.settings.barangay')" :current="request()->routeIs('admin.settings.barangay')" wire:navigate>
                         {{ __('Barangay Settings') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="banknotes" :href="route('admin.settings.service-fees')" :current="request()->routeIs('admin.settings.service-fees')" wire:navigate>
+                        {{ __('Service Fees') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
                 @endif
@@ -49,6 +56,7 @@
                     $myResidentRecord = auth()->user()->resident;
                     $myPendingCertificates  = $myResidentRecord ? \App\Models\Certificate::where('resident_id', $myResidentRecord->id)->where('status', 'pending')->count() : 0;
                     $myScheduledAppointments = $myResidentRecord ? \App\Models\Appointment::where('resident_id', $myResidentRecord->id)->where('status', 'scheduled')->count() : 0;
+                    $myPendingBlotters = $myResidentRecord ? \App\Models\Blotter::where('resident_id', $myResidentRecord->id)->where('status', 'pending')->count() : 0;
                 @endphp
                 <flux:sidebar.group :heading="__('My Services')" class="grid">
                     <flux:sidebar.item icon="document-text" :href="route('resident.certificates.index')" :current="request()->routeIs('resident.certificates.*')" wire:navigate :badge="$myPendingCertificates ?: null" badge:color="amber">
@@ -56,6 +64,9 @@
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="calendar" :href="route('resident.appointments.index')" :current="request()->routeIs('resident.appointments.*')" wire:navigate :badge="$myScheduledAppointments ?: null" badge:color="amber">
                         {{ __('My Appointments') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="shield-exclamation" :href="route('resident.blotters.index')" :current="request()->routeIs('resident.blotters.*')" wire:navigate :badge="$myPendingBlotters ?: null" badge:color="amber">
+                        {{ __('My Blotters') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
                 @endif

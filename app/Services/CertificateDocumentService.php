@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BarangayProfile;
+use App\Models\Blotter;
 use App\Models\Certificate;
 use Carbon\Carbon;
 use PhpOffice\PhpWord\TemplateProcessor;
@@ -17,6 +18,7 @@ class CertificateDocumentService
     private const array TEMPLATES = [
         'certificate_of_residency' => 'BARANGAY_RESIDENCY_TEMPLATE.docx',
         'barangay_clearance' => 'BARANGAY_CLEARANCE_TEMPLATE.docx',
+        'blotter' => 'BARANGAY_BLOTTER_TEMPLATE.docx',
     ];
 
     /**
@@ -41,6 +43,35 @@ class CertificateDocumentService
         }
 
         $filename = "certificate_{$certificate->id}_".time().'.docx';
+        $outputPath = "{$outputDir}/{$filename}";
+
+        $template->saveAs($outputPath);
+
+        return $outputPath;
+    }
+
+    /**
+     * Generate a filled DOCX document for the given blotter.
+     *
+     * @param  array{date_of_issuance: string}  $formData
+     */
+    public function generateBlotter(Blotter $blotter, array $formData): string
+    {
+        $templateFile = self::TEMPLATES['blotter']
+            ?? throw new \InvalidArgumentException('No template available for blotter.');
+
+        $templatePath = storage_path("word_templates/{$templateFile}");
+
+        $template = new TemplateProcessor($templatePath);
+
+        $template->setValues($this->getBlotterPlaceholderValues($blotter, $formData));
+
+        $outputDir = storage_path('app/private/blotters');
+        if (! is_dir($outputDir)) {
+            mkdir($outputDir, 0755, true);
+        }
+
+        $filename = "blotter_{$blotter->id}_".time().'.docx';
         $outputPath = "{$outputDir}/{$filename}";
 
         $template->saveAs($outputPath);
@@ -84,6 +115,56 @@ class CertificateDocumentService
                 'punong_barangay_name' => $barangay->captain_name ?? '',
             ],
         };
+    }
+
+    /**
+     * Get the placeholder values for the given blotter.
+     *
+     * @param  array{date_of_issuance: string}  $formData
+     * @return array<string, string>
+     */
+    private function getBlotterPlaceholderValues(Blotter $blotter, array $formData): array
+    {
+        $barangay = BarangayProfile::get();
+        $issuanceDate = Carbon::parse($formData['date_of_issuance']);
+
+        if ($blotter->is_walkin) {
+            $complainantName = $blotter->complainant_name ?? '';
+            $complainantAddress = collect([
+                $blotter->complainant_purok ? "Purok {$blotter->complainant_purok}" : null,
+                $blotter->complainant_house_number,
+                $blotter->complainant_street,
+            ])->filter()->implode(', ');
+            $purokName = $blotter->complainant_purok ?? '';
+        } else {
+            $resident = $blotter->resident;
+            $complainantName = $resident->full_name;
+            $complainantAddress = collect([
+                $resident->purok ? "Purok {$resident->purok}." : null,
+                $resident->address,
+            ])->filter()->implode(', ');
+            $purokName = $resident->purok ?? '';
+        }
+
+        return [
+            'resident_name' => $complainantName,
+            'resident_address' => $complainantAddress,
+            'incident_type' => $blotter->type_label,
+            'purok_name' => $purokName,
+            'barangay_name' => $barangay->barangay_name,
+            'municipality_name' => $barangay->municipality ?? '',
+            'province_name' => $barangay->province ?? '',
+            'incident_datetime' => $blotter->incident_datetime->format('F j, Y g:i A'),
+            'incident_location' => $blotter->incident_location ?? '',
+            'owner_name' => $blotter->owner_name ?? '',
+            'issue_day' => $issuanceDate->format('j'),
+            'issue_month' => $issuanceDate->format('F'),
+            'issue_year' => $issuanceDate->format('Y'),
+            'date_issued' => $issuanceDate->format('F j, Y'),
+            'or_number' => $blotter->or_number ?? '',
+            'amount_paid' => number_format($blotter->fee, 2),
+            'punong_barangay_name' => $barangay->captain_name ?? '',
+        ];
     }
 
     /**

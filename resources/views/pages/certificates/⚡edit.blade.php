@@ -2,6 +2,7 @@
 
 use App\Models\Certificate;
 use App\Models\Resident;
+use App\Models\ServiceFee;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -51,26 +52,13 @@ class extends Component
     {
         $validated = $this->validate();
 
-        $validated['fee'] = $this->calculateFee($validated['type']);
+        $validated['fee'] = ServiceFee::getFee($validated['type']);
 
         $this->certificate->update($validated);
 
         session()->flash('status', __('Certificate request updated successfully.'));
 
         $this->redirect(route('certificates.show', $this->certificate), navigate: true);
-    }
-
-    protected function calculateFee(string $type): float
-    {
-        return match ($type) {
-            'barangay_clearance' => 50.00,
-            'certificate_of_residency' => 30.00,
-            'certificate_of_indigency' => 0.00,
-            'business_permit' => 200.00,
-            'building_permit' => 150.00,
-            'cedula' => 50.00,
-            default => 50.00,
-        };
     }
 
     #[Computed]
@@ -151,7 +139,7 @@ class extends Component
                             {{ __('Processing Fee') }}
                         </flux:text>
                         <flux:text class="text-2xl font-bold text-emerald-600">
-                            ₱{{ number_format($this->calculateFee($type), 2) }}
+                            ₱{{ number_format(\App\Models\ServiceFee::getFee($type), 2) }}
                         </flux:text>
                     </div>
                 </div>

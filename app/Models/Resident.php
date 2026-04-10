@@ -125,6 +125,16 @@ class Resident extends Model
     }
 
     /**
+     * Get the blotters filed by the resident.
+     *
+     * @return HasMany<Blotter, $this>
+     */
+    public function blotters(): HasMany
+    {
+        return $this->hasMany(Blotter::class);
+    }
+
+    /**
      * Calculate the resident's age.
      */
     public function getAgeAttribute(): int

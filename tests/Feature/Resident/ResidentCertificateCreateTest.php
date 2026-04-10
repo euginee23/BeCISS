@@ -2,6 +2,7 @@
 
 use App\Models\Certificate;
 use App\Models\Resident;
+use App\Models\ServiceFee;
 use App\Models\User;
 use Livewire\Livewire;
 
@@ -10,6 +11,10 @@ beforeEach(function () {
     $this->staff = User::factory()->staff()->create();
     $this->residentUser = User::factory()->resident()->create();
     $this->residentRecord = Resident::factory()->create(['user_id' => $this->residentUser->id]);
+
+    ServiceFee::updateOrCreate(['service_type' => 'barangay_clearance'], ['label' => 'Barangay Clearance', 'fee' => 50.00, 'is_active' => true]);
+    ServiceFee::updateOrCreate(['service_type' => 'certificate_of_residency'], ['label' => 'Certificate of Residency', 'fee' => 30.00, 'is_active' => true]);
+    ServiceFee::updateOrCreate(['service_type' => 'certificate_of_indigency'], ['label' => 'Certificate of Indigency', 'fee' => 0.00, 'is_active' => true]);
 });
 
 describe('page access', function () {

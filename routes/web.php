@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\VerifyEmailCodeController;
+use App\Http\Controllers\BlotterDownloadController;
 use App\Http\Controllers\CertificateDownloadController;
 use App\Models\BarangayProfile;
 use Illuminate\Support\Facades\Route;
@@ -34,9 +35,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Certificate Download (all authenticated roles)
         Route::get('certificates/{certificate}/download', CertificateDownloadController::class)->name('certificates.download');
 
+        // Blotter Download (all authenticated roles)
+        Route::get('blotters/{blotter}/download', BlotterDownloadController::class)->name('blotters.download');
+
         // Admin-only routes
         Route::middleware(['role:admin'])->group(function () {
             Route::livewire('admin/settings', 'pages::admin.settings.barangay')->name('admin.settings.barangay');
+            Route::livewire('admin/settings/service-fees', 'pages::admin.settings.service-fees')->name('admin.settings.service-fees');
         });
 
         // Resident-only routes
@@ -45,6 +50,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('my/certificates', 'pages::resident.certificates.index')->name('resident.certificates.index');
             Route::livewire('my/appointments/create', 'pages::resident.appointments.create')->name('resident.appointments.create');
             Route::livewire('my/appointments', 'pages::resident.appointments.index')->name('resident.appointments.index');
+            Route::livewire('my/blotters/create', 'pages::resident.blotters.create')->name('resident.blotters.create');
+            Route::livewire('my/blotters', 'pages::resident.blotters.index')->name('resident.blotters.index');
             Route::livewire('my/notifications', 'pages::resident.notifications')->name('resident.notifications');
         });
 
@@ -67,6 +74,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('appointments/create', 'pages::appointments.create')->name('appointments.create');
             Route::livewire('appointments/{appointment}', 'pages::appointments.show')->name('appointments.show');
             Route::livewire('appointments/{appointment}/edit', 'pages::appointments.edit')->name('appointments.edit');
+
+            // Blotters Management
+            Route::livewire('blotters', 'pages::blotters.index')->name('blotters.index');
+            Route::livewire('blotters/create', 'pages::blotters.create')->name('blotters.create');
+            Route::livewire('blotters/{blotter}', 'pages::blotters.show')->name('blotters.show');
+            Route::livewire('blotters/{blotter}/edit', 'pages::blotters.edit')->name('blotters.edit');
         });
     });
 });
