@@ -1,6 +1,13 @@
 <?php
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+
+// When config is cached (e.g. after `php artisan optimize`), phpunit.xml env overrides are
+// ignored and tests run against the real database. Clear the cache to prevent data loss.
+if (is_file(__DIR__.'/../bootstrap/cache/config.php')) {
+    unlink(__DIR__.'/../bootstrap/cache/config.php');
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -14,7 +21,7 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
-    ->use(Illuminate\Foundation\Testing\DatabaseTransactions::class)
+    ->use(RefreshDatabase::class)
     ->in('Feature');
 
 /*

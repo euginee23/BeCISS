@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\ForgotPasswordCodeController;
 use App\Http\Controllers\Auth\VerifyEmailCodeController;
 use App\Http\Controllers\BlotterDownloadController;
 use App\Http\Controllers\CertificateDownloadController;
@@ -20,6 +21,20 @@ Route::get('/login', function () {
 Route::get('/register', function () {
     return redirect()->route('home');
 })->name('register');
+
+// Forgot password (6-digit code flow)
+Route::middleware('guest')->group(function () {
+    Route::get('forgot-password', [ForgotPasswordCodeController::class, 'showRequestForm'])->name('password.request');
+    Route::get('forgot-password/verify', [ForgotPasswordCodeController::class, 'showVerifyForm'])->name('password.verify-code');
+    Route::get('forgot-password/reset', [ForgotPasswordCodeController::class, 'showResetForm'])->name('password.reset-form');
+
+    // Throttle only state-changing POST requests
+    Route::middleware('throttle:6,1')->group(function () {
+        Route::post('forgot-password', [ForgotPasswordCodeController::class, 'sendCode'])->name('password.email');
+        Route::post('forgot-password/verify', [ForgotPasswordCodeController::class, 'verifyCode'])->name('password.verify-code.store');
+        Route::post('forgot-password/reset', [ForgotPasswordCodeController::class, 'resetPassword'])->name('password.reset-update');
+    });
+});
 
 Route::post('email/verify/code', VerifyEmailCodeController::class)
     ->middleware(['auth', 'throttle:6,1'])
