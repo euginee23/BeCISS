@@ -3,10 +3,14 @@
 use App\Concerns\PasswordValidationRules;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('Security settings')] class extends Component {
+new
+#[Title('Security settings')]
+#[Layout('layouts::app')]
+class extends Component {
     use PasswordValidationRules;
 
     public string $current_password = '';
