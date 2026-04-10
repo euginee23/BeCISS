@@ -25,6 +25,7 @@ class extends Component
      */
     public const array ALLOWED_TYPES = [
         'barangay_clearance' => 'Barangay Clearance',
+        'barangay_certification' => 'Barangay Certification',
         'certificate_of_residency' => 'Certificate of Residency',
         'certificate_of_indigency' => 'Certificate of Indigency',
     ];

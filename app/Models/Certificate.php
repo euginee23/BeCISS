@@ -17,12 +17,9 @@ class Certificate extends Model
      */
     public const array TYPES = [
         'barangay_clearance' => 'Barangay Clearance',
+        'barangay_certification' => 'Barangay Certification',
         'certificate_of_residency' => 'Certificate of Residency',
         'certificate_of_indigency' => 'Certificate of Indigency',
-        'business_permit' => 'Business Permit',
-        'building_permit' => 'Building Permit',
-        'cedula' => 'Cedula',
-        'other' => 'Other',
     ];
 
     /**

@@ -199,7 +199,7 @@
                         </div>
                         <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-2">Certificate Requests</h3>
                         <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                            Online request and issuance of barangay clearance, indigency, residency, and other certificates.
+                            Online request and issuance of barangay clearance, barangay indigency, residency, and barangay certification.
                         </p>
                     </div>
                 </div>
@@ -270,7 +270,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                     </div>
-                    <h3 class="text-base font-bold text-zinc-900 dark:text-white mb-2">Certificate of Indigency</h3>
+                    <h3 class="text-base font-bold text-zinc-900 dark:text-white mb-2">Barangay Indigency</h3>
                     <p class="text-sm text-zinc-600 dark:text-zinc-400">For medical assistance, scholarship applications, and social services</p>
                 </div>
 
@@ -285,37 +285,15 @@
                     <p class="text-sm text-zinc-600 dark:text-zinc-400">Proof of residence for various government and private transactions</p>
                 </div>
 
-                {{-- Business Permit Clearance --}}
+                {{-- Barangay Certification --}}
                 <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 hover:shadow-lg transition-shadow">
                     <div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center mb-4">
                         <svg class="size-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                     </div>
-                    <h3 class="text-base font-bold text-zinc-900 dark:text-white mb-2">Business Permit Clearance</h3>
-                    <p class="text-sm text-zinc-600 dark:text-zinc-400">Required for business permit applications within the barangay</p>
-                </div>
-
-                {{-- Certificate of Good Moral --}}
-                <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 hover:shadow-lg transition-shadow">
-                    <div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center mb-4">
-                        <svg class="size-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <h3 class="text-base font-bold text-zinc-900 dark:text-white mb-2">Certificate of Good Moral</h3>
-                    <p class="text-sm text-zinc-600 dark:text-zinc-400">Character reference for employment, school, and other purposes</p>
-                </div>
-
-                {{-- First Time Job Seeker --}}
-                <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 hover:shadow-lg transition-shadow">
-                    <div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center mb-4">
-                        <svg class="size-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                    </div>
-                    <h3 class="text-base font-bold text-zinc-900 dark:text-white mb-2">First Time Job Seeker</h3>
-                    <p class="text-sm text-zinc-600 dark:text-zinc-400">Certificate for first-time job seekers under RA 11261</p>
+                    <h3 class="text-base font-bold text-zinc-900 dark:text-white mb-2">Barangay Certification</h3>
+                    <p class="text-sm text-zinc-600 dark:text-zinc-400">General certification for legal, school, government, and other official purposes</p>
                 </div>
             </div>
         </div>

@@ -100,6 +100,17 @@ class CertificateFactory extends Factory
     }
 
     /**
+     * Set as barangay certification.
+     */
+    public function barangayCertification(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => 'barangay_certification',
+            'fee' => 50.00,
+        ]);
+    }
+
+    /**
      * Set as certificate of residency.
      */
     public function residency(): static

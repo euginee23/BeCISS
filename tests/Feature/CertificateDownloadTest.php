@@ -100,16 +100,16 @@ test('can download certificate regardless of status', function () {
     }
 });
 
-test('cannot download certificate type without template', function () {
+test('admin can download completed barangay certification', function () {
     $user = User::factory()->admin()->create();
-    $certificate = Certificate::factory()->completed()->create(['type' => 'business_permit']);
+    $certificate = Certificate::factory()->barangayCertification()->completed()->create();
 
     $this->actingAs($user)
         ->get(route('certificates.download', $certificate).'?'.http_build_query([
             'format' => 'docx',
             'date_of_issuance' => '2026-04-01',
         ]))
-        ->assertNotFound();
+        ->assertSuccessful();
 });
 
 /*

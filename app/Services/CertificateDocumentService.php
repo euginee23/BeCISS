@@ -18,6 +18,7 @@ class CertificateDocumentService
     private const array TEMPLATES = [
         'certificate_of_residency' => 'BARANGAY_RESIDENCY_TEMPLATE.docx',
         'barangay_clearance' => 'BARANGAY_CLEARANCE_TEMPLATE.docx',
+        'barangay_certification' => 'BARANGAY_CERTIFICATION_TEMPLATE.docx',
         'certificate_of_indigency' => 'BARANGAY_IDIGENCY_TEMPLATE.docx',
         'blotter' => 'BARANGAY_BLOTTER_TEMPLATE.docx',
     ];
@@ -117,6 +118,20 @@ class CertificateDocumentService
                 'issue_day' => $issuanceDate->format('j'),
                 'issue_month' => $issuanceDate->format('F Y'),
                 'date_issued' => $issuanceDate->format('F j, Y'),
+                'punong_barangay_name' => $barangay->captain_name ?? '',
+            ],
+            'barangay_certification' => [
+                'resident_name' => $resident->full_name,
+                'resident_address' => $residentAddress,
+                'barangay_name' => $barangay->barangay_name,
+                'municipality_name' => $barangay->municipality ?? '',
+                'province_name' => $barangay->province ?? '',
+                'issue_day' => $issuanceDate->format('j'),
+                'issue_month' => $issuanceDate->format('F'),
+                'issue_year' => $issuanceDate->format('Y'),
+                'date_issued' => $issuanceDate->format('F j, Y'),
+                'or_number' => $certificate->or_number ?? '',
+                'amount_paid' => number_format((float) $certificate->fee, 2),
                 'punong_barangay_name' => $barangay->captain_name ?? '',
             ],
             default => [

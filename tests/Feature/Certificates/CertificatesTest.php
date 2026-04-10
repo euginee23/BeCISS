@@ -71,6 +71,25 @@ describe('certificates create', function () {
         ]);
     });
 
+    it('can create a barangay certification request', function () {
+        $resident = Resident::factory()->create();
+
+        Livewire::actingAs($this->admin)
+            ->test('pages::certificates.create')
+            ->set('resident_id', $resident->id)
+            ->set('type', 'barangay_certification')
+            ->set('purpose', 'Legal / Court Purposes')
+            ->call('save')
+            ->assertRedirect(route('certificates.index'));
+
+        $this->assertDatabaseHas('certificates', [
+            'resident_id' => $resident->id,
+            'type' => 'barangay_certification',
+            'purpose' => 'Legal / Court Purposes',
+            'status' => 'pending',
+        ]);
+    });
+
     it('validates required fields', function () {
         Livewire::actingAs($this->admin)
             ->test('pages::certificates.create')

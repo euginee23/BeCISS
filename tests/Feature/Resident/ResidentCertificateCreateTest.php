@@ -13,6 +13,7 @@ beforeEach(function () {
     $this->residentRecord = Resident::factory()->create(['user_id' => $this->residentUser->id]);
 
     ServiceFee::updateOrCreate(['service_type' => 'barangay_clearance'], ['label' => 'Barangay Clearance', 'fee' => 50.00, 'is_active' => true]);
+    ServiceFee::updateOrCreate(['service_type' => 'barangay_certification'], ['label' => 'Barangay Certification', 'fee' => 50.00, 'is_active' => true]);
     ServiceFee::updateOrCreate(['service_type' => 'certificate_of_residency'], ['label' => 'Certificate of Residency', 'fee' => 30.00, 'is_active' => true]);
     ServiceFee::updateOrCreate(['service_type' => 'certificate_of_indigency'], ['label' => 'Certificate of Indigency', 'fee' => 0.00, 'is_active' => true]);
 });
@@ -76,6 +77,20 @@ describe('certificate request submission', function () {
         ]);
     });
 
+    it('sets correct fee for barangay certification', function () {
+        Livewire::actingAs($this->residentUser)
+            ->test('pages::resident.certificates.create')
+            ->set('type', 'barangay_certification')
+            ->set('purpose', 'Other')
+            ->call('save')
+            ->assertRedirect(route('resident.certificates.index'));
+
+        $this->assertDatabaseHas('certificates', [
+            'type' => 'barangay_certification',
+            'fee' => 50.00,
+        ]);
+    });
+
     it('sets zero fee for certificate of indigency', function () {
         Livewire::actingAs($this->residentUser)
             ->test('pages::resident.certificates.create')
@@ -135,8 +150,8 @@ describe('validation', function () {
 
         Livewire::actingAs($this->residentUser)
             ->test('pages::resident.certificates.create')
-            ->set('type', 'business_permit')
-            ->set('purpose', 'I want a business permit')
+            ->set('type', 'cedula')
+            ->set('purpose', 'I need a cedula')
             ->call('save')
             ->assertHasErrors(['type']);
     });

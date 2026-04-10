@@ -37,6 +37,16 @@ test('getFee returns zero for unknown service type', function () {
 test('sync creates all predefined service fee records', function () {
     ServiceFee::sync();
 
+    $expectedTypes = [
+        'barangay_clearance',
+        'barangay_certification',
+        'certificate_of_residency',
+        'certificate_of_indigency',
+        'blotter',
+    ];
+
+    expect(ServiceFee::whereIn('service_type', $expectedTypes)->count())->toBe(5);
+
     foreach (array_keys(ServiceFee::CERTIFICATE_SERVICES) as $type) {
         $this->assertDatabaseHas('service_fees', ['service_type' => $type]);
     }
@@ -115,7 +125,7 @@ test('admin can deactivate a service fee', function () {
 test('fee amount is required and must be numeric', function () {
     $user = User::factory()->admin()->create();
     ServiceFee::sync();
-    $fee = ServiceFee::where('service_type', 'cedula')->firstOrFail();
+    $fee = ServiceFee::where('service_type', 'barangay_certification')->firstOrFail();
 
     Livewire::actingAs($user)
         ->test('pages::admin.settings.service-fees')
