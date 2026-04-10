@@ -47,7 +47,7 @@ class extends Component
         );
     }
 
-    public function showCompleteModal(): void
+    public function openCompleteModal(): void
     {
         $this->showCompleteModal = true;
     }
@@ -89,7 +89,7 @@ class extends Component
         );
     }
 
-    public function showCancelModal(): void
+    public function openCancelModal(): void
     {
         $this->showCancelModal = true;
     }
@@ -164,17 +164,17 @@ class extends Component
                 <flux:button variant="primary" wire:click="confirmAppointment">
                     {{ __('Confirm') }}
                 </flux:button>
-                <flux:button variant="danger" wire:click="showCancelModal">
+                <flux:button variant="danger" wire:click="openCancelModal">
                     {{ __('Cancel') }}
                 </flux:button>
             @elseif ($appointment->status === 'confirmed')
-                <flux:button variant="primary" wire:click="showCompleteModal">
+                <flux:button variant="primary" wire:click="openCompleteModal">
                     {{ __('Mark Complete') }}
                 </flux:button>
                 <flux:button variant="ghost" wire:click="markNoShow">
                     {{ __('No Show') }}
                 </flux:button>
-                <flux:button variant="danger" wire:click="showCancelModal">
+                <flux:button variant="danger" wire:click="openCancelModal">
                     {{ __('Cancel') }}
                 </flux:button>
             @endif
