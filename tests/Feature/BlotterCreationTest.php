@@ -48,6 +48,19 @@ test('staff can access blotter index', function () {
         ->assertSuccessful();
 });
 
+test('admin can view walk-in blotters in index', function () {
+    $user = User::factory()->admin()->create();
+
+    Blotter::factory()->walkin()->create([
+        'complainant_name' => 'Walk-in Sample Complainant',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('blotters.index'))
+        ->assertSuccessful()
+        ->assertSeeText('Walk-in Sample Complainant');
+});
+
 test('resident cannot access admin blotter index', function () {
     $user = User::factory()->resident()->create();
     Resident::factory()->create(['user_id' => $user->id, 'status' => 'approved']);
