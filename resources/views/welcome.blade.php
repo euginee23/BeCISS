@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'BeCISS') }} - Barangay e-Connect & Intelligent Service Scheduling</title>
+    <title>{{ config('app.name', 'BeCISS') }} - Barangay e-Connect & Service Scheduling</title>
     <meta name="description" content="BeCISS is a web-based barangay management system that digitalizes resident records, certificate issuance, and service scheduling.">
 
     <link rel="icon" href="/favicon.ico" sizes="any">
@@ -98,7 +98,7 @@
                 <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-zinc-900 dark:text-white leading-tight mb-6">
                     Barangay
                     <span class="text-transparent bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text">e-Connect</span>
-                    & Intelligent Service Scheduling
+                    & Service Scheduling
                 </h1>
 
                 {{-- Subheading --}}
@@ -215,7 +215,7 @@
                         </div>
                         <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-2">Service Scheduling</h3>
                         <p class="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                            Book appointments online and avoid long queues with intelligent scheduling system.
+                            Book appointments online and avoid long queues with our online scheduling system.
                         </p>
                     </div>
                 </div>
@@ -342,7 +342,7 @@
                         <span class="text-xl font-bold">BeCISS</span>
                     </div>
                     <p class="text-zinc-400 text-sm leading-relaxed max-w-md">
-                        Barangay e-Connect & Intelligent Service Scheduling (BeCISS) — A web-based barangay management system that digitalizes resident records, certificate issuance, and service scheduling to improve efficiency and reduce manual processes.
+                        Barangay e-Connect & Service Scheduling (BeCISS) — A web-based barangay management system that digitalizes resident records, certificate issuance, and service scheduling to improve efficiency and reduce manual processes.
                     </p>
                 </div>
 

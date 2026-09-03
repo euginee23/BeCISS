@@ -46,11 +46,6 @@ class Blotter extends Model
      */
     protected $fillable = [
         'resident_id',
-        'complainant_name',
-        'complainant_purok',
-        'complainant_street',
-        'complainant_house_number',
-        'complainant_contact',
         'processed_by',
         'blotter_number',
         'incident_type',
@@ -98,14 +93,6 @@ class Blotter extends Model
         }
 
         return self::TYPES[$this->incident_type] ?? $this->incident_type;
-    }
-
-    /**
-     * Determine if this blotter was filed by a walk-in complainant.
-     */
-    public function getIsWalkinAttribute(): bool
-    {
-        return is_null($this->resident_id);
     }
 
     /**

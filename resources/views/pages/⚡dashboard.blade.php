@@ -88,41 +88,18 @@ class extends Component
 <div class="flex h-full w-full flex-1 flex-col gap-6">
 
     {{-- Welcome Header --}}
-    <div class="flex items-center justify-between">
-        <div>
-            <flux:heading size="xl">{{ auth()->user()->isResident() ? 'My Dashboard' : 'Dashboard' }}</flux:heading>
-            <flux:text class="text-zinc-500 dark:text-zinc-400 mt-1">
-                Welcome back, <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ auth()->user()->name }}</span>.
-                @if(auth()->user()->isAdmin())
-                    Here's an overview of the barangay system.
-                @elseif(auth()->user()->isStaff())
-                    Here's today's overview.
-                @else
-                    Here's a summary of your services.
-                @endif
-            </flux:text>
-        </div>
-
-        {{-- Quick actions --}}
-        @if(auth()->user()->isAdmin() || auth()->user()->isStaff())
-            <div class="hidden sm:flex items-center gap-2">
-                <flux:button :href="route('residents.create')" variant="outline" size="sm" icon="user-plus" wire:navigate>
-                    New Resident
-                </flux:button>
-                <flux:button :href="route('appointments.create')" variant="primary" size="sm" icon="calendar" wire:navigate>
-                    New Appointment
-                </flux:button>
-            </div>
-        @elseif(auth()->user()->isResident() && auth()->user()->resident?->isApproved())
-            <div class="hidden sm:flex items-center gap-2">
-                <flux:button :href="route('resident.certificates.index')" variant="outline" size="sm" icon="document-text" wire:navigate>
-                    My Certificates
-                </flux:button>
-                <flux:button :href="route('resident.appointments.index')" variant="primary" size="sm" icon="calendar" wire:navigate>
-                    My Appointments
-                </flux:button>
-            </div>
-        @endif
+    <div>
+        <flux:heading size="xl">{{ auth()->user()->isResident() ? 'My Dashboard' : 'Dashboard' }}</flux:heading>
+        <flux:text class="text-zinc-500 dark:text-zinc-400 mt-1">
+            Welcome back, <span class="font-medium text-zinc-700 dark:text-zinc-200">{{ auth()->user()->name }}</span>.
+            @if(auth()->user()->isAdmin())
+                Here's an overview of the barangay system.
+            @elseif(auth()->user()->isStaff())
+                Here's today's overview.
+            @else
+                Here's a summary of your services.
+            @endif
+        </flux:text>
     </div>
 
     {{-- ===== ADMIN / STAFF STATS ===== --}}
@@ -262,8 +239,6 @@ class extends Component
     {{-- ===== RESIDENT DASHBOARD ===== --}}
     @elseif(auth()->user()->isResident())
 
-        @php $resident = auth()->user()->resident; @endphp
-
         {{-- Stats Cards --}}
         <div class="grid grid-cols-2 gap-4">
                 <div class="group relative overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 transition-all hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700">
@@ -293,30 +268,6 @@ class extends Component
                         <flux:text class="text-xs text-zinc-400">{{ __('Scheduled for today') }}</flux:text>
                     </div>
                 </div>
-            </div>
-
-            {{-- Quick Actions --}}
-            <div class="grid grid-cols-2 gap-4">
-                <a href="{{ route('resident.certificates.index') }}" wire:navigate class="group relative overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:border-emerald-300 dark:hover:border-emerald-700">
-                    <div class="absolute inset-0 bg-gradient-to-br from-emerald-50 to-transparent dark:from-emerald-950/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div class="relative flex flex-col items-center text-center gap-3">
-                        <div class="size-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <flux:icon name="document-text" class="size-6 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <flux:heading size="sm">{{ __('My Certificates') }}</flux:heading>
-                        <flux:text class="text-xs text-zinc-500">{{ __('View & request certificates') }}</flux:text>
-                    </div>
-                </a>
-                <a href="{{ route('resident.appointments.index') }}" wire:navigate class="group relative overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 transition-all hover:-translate-y-0.5 hover:shadow-xl hover:border-emerald-300 dark:hover:border-emerald-700">
-                    <div class="absolute inset-0 bg-gradient-to-br from-teal-50 to-transparent dark:from-teal-950/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div class="relative flex flex-col items-center text-center gap-3">
-                        <div class="size-12 rounded-xl bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <flux:icon name="calendar" class="size-6 text-teal-600 dark:text-teal-400" />
-                        </div>
-                        <flux:heading size="sm">{{ __('My Appointments') }}</flux:heading>
-                        <flux:text class="text-xs text-zinc-500">{{ __('Schedule & manage appointments') }}</flux:text>
-                    </div>
-                </a>
             </div>
 
             {{-- Recent Certificates --}}

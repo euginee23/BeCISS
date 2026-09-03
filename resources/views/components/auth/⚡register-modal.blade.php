@@ -7,7 +7,10 @@ use Livewire\Component;
 
 new class extends Component
 {
-    public string $name = '';
+    public string $first_name = '';
+    public string $middle_name = '';
+    public string $last_name = '';
+    public string $suffix = '';
     public string $email = '';
     public string $password = '';
     public string $password_confirmation = '';
@@ -15,7 +18,10 @@ new class extends Component
     public function register(): void
     {
         $user = app(CreateNewUser::class)->create([
-            'name' => $this->name,
+            'first_name' => $this->first_name,
+            'middle_name' => $this->middle_name,
+            'last_name' => $this->last_name,
+            'suffix' => $this->suffix,
             'email' => $this->email,
             'password' => $this->password,
             'password_confirmation' => $this->password_confirmation,
@@ -45,11 +51,31 @@ new class extends Component
             </div>
 
             <form wire:submit="register" class="flex flex-col gap-4">
-                <flux:field>
-                    <flux:label>Full Name</flux:label>
-                    <flux:input wire:model="name" placeholder="Your full name" required autocomplete="name" />
-                    <flux:error name="name" />
-                </flux:field>
+                <div class="grid grid-cols-2 gap-4">
+                    <flux:field>
+                        <flux:label>First Name</flux:label>
+                        <flux:input wire:model="first_name" placeholder="Juan" required autocomplete="given-name" x-capitalize />
+                        <flux:error name="first_name" />
+                    </flux:field>
+                    <flux:field>
+                        <flux:label>Last Name</flux:label>
+                        <flux:input wire:model="last_name" placeholder="Dela Cruz" required autocomplete="family-name" x-capitalize />
+                        <flux:error name="last_name" />
+                    </flux:field>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <flux:field>
+                        <flux:label>Middle Name</flux:label>
+                        <flux:input wire:model="middle_name" placeholder="Optional" autocomplete="additional-name" x-capitalize />
+                        <flux:error name="middle_name" />
+                    </flux:field>
+                    <flux:field>
+                        <flux:label>Suffix</flux:label>
+                        <flux:input wire:model="suffix" placeholder="Jr., Sr., III" autocomplete="honorific-suffix" />
+                        <flux:error name="suffix" />
+                    </flux:field>
+                </div>
 
                 <flux:field>
                     <flux:label>Email address</flux:label>
@@ -85,5 +111,4 @@ new class extends Component
             </div>
         </div>
     </flux:modal>
-</div>
 </div>

@@ -73,13 +73,6 @@ class extends Component {
         }
     }
 
-    public function complainantDisplayName(Blotter $blotter): string
-    {
-        return $blotter->resident?->full_name
-            ?? $blotter->complainant_name
-            ?? 'Walk-in Complainant';
-    }
-
     #[Computed]
     public function blotters()
     {
@@ -162,10 +155,9 @@ class extends Component {
                         {{ $blotter->blotter_number }}
                     </flux:table.cell>
                     <flux:table.cell>
-                        @php($complainantDisplayName = $this->complainantDisplayName($blotter))
                         <div class="flex items-center gap-3">
-                            <flux:avatar size="xs" name="{{ $complainantDisplayName }}" />
-                            {{ $complainantDisplayName }}
+                            <flux:avatar size="xs" name="{{ $blotter->resident->full_name }}" />
+                            {{ $blotter->resident->full_name }}
                         </div>
                     </flux:table.cell>
                     <flux:table.cell>{{ $blotter->type_label }}</flux:table.cell>

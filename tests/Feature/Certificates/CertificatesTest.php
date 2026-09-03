@@ -90,27 +90,14 @@ describe('certificates create', function () {
         ]);
     });
 
-    it('can create a walk-in certificate request', function () {
+    it('requires a registered resident', function () {
         Livewire::actingAs($this->admin)
             ->test('pages::certificates.create')
-            ->set('complainantType', 'walkin')
-            ->set('walkin_name', 'Juan Dela Cruz')
-            ->set('walkin_purok', '3')
-            ->set('walkin_street', 'Mabini Street')
-            ->set('walkin_house_number', '12')
-            ->set('walkin_contact', '09123456789')
+            ->set('resident_id', null)
             ->set('type', 'barangay_clearance')
             ->set('purpose', 'Employment / Job Application')
             ->call('save')
-            ->assertRedirect(route('certificates.index'));
-
-        $this->assertDatabaseHas('certificates', [
-            'resident_id' => null,
-            'is_walkin' => true,
-            'walkin_name' => 'Juan Dela Cruz',
-            'type' => 'barangay_clearance',
-            'status' => 'pending',
-        ]);
+            ->assertHasErrors(['resident_id']);
     });
 
     it('validates required fields', function () {
@@ -231,15 +218,13 @@ describe('certificate edit', function () {
         ]);
     });
 
-    it('can update a pending certificate to walk-in requester', function () {
+    it('can reassign a pending certificate to another resident', function () {
         $certificate = Certificate::factory()->create(['status' => 'pending']);
+        $other = Resident::factory()->create();
 
         Livewire::actingAs($this->admin)
             ->test('pages::certificates.edit', ['certificate' => $certificate])
-            ->set('complainantType', 'walkin')
-            ->set('walkin_name', 'Pedro Santos')
-            ->set('walkin_street', 'Rizal Street')
-            ->set('walkin_contact', '09998887777')
+            ->set('resident_id', $other->id)
             ->set('type', 'barangay_clearance')
             ->set('purpose', 'Employment / Job Application')
             ->call('save')
@@ -247,9 +232,17 @@ describe('certificate edit', function () {
 
         $this->assertDatabaseHas('certificates', [
             'id' => $certificate->id,
-            'resident_id' => null,
-            'is_walkin' => true,
-            'walkin_name' => 'Pedro Santos',
+            'resident_id' => $other->id,
         ]);
+    });
+
+    it('rejects an edit that clears the resident', function () {
+        $certificate = Certificate::factory()->create(['status' => 'pending']);
+
+        Livewire::actingAs($this->admin)
+            ->test('pages::certificates.edit', ['certificate' => $certificate])
+            ->set('resident_id', null)
+            ->call('save')
+            ->assertHasErrors(['resident_id']);
     });
 });

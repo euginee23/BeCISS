@@ -31,6 +31,21 @@ trait ProfileValidationRules
     }
 
     /**
+     * Get the validation rules for the separated name fields collected at registration.
+     *
+     * @return array<string, array<int, \Illuminate\Contracts\Validation\Rule|array<mixed>|string>>
+     */
+    protected function registrationNameRules(): array
+    {
+        return [
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
+            'suffix' => ['nullable', 'string', 'max:10'],
+        ];
+    }
+
+    /**
      * Get the validation rules used to validate user emails.
      *
      * @return array<int, \Illuminate\Contracts\Validation\Rule|array<mixed>|string>

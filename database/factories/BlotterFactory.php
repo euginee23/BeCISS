@@ -82,19 +82,4 @@ class BlotterFactory extends Factory
             'rejection_reason' => fake()->sentence(),
         ]);
     }
-
-    /**
-     * Indicate the blotter is from a walk-in (unregistered) complainant.
-     */
-    public function walkin(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'resident_id' => null,
-            'complainant_name' => fake()->name(),
-            'complainant_purok' => 'Purok '.fake()->numberBetween(1, 10),
-            'complainant_street' => fake()->streetName(),
-            'complainant_house_number' => fake()->buildingNumber(),
-            'complainant_contact' => '09'.fake()->numerify('#########'),
-        ]);
-    }
 }

@@ -121,7 +121,7 @@ class extends Component {
 
         @if ($this->notifications->hasPages())
             <div class="mt-4">
-                {{ $notifications->links() }}
+                {{ $this->notifications->links() }}
             </div>
         @endif
     @endif

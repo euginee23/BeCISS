@@ -249,7 +249,7 @@ class extends Component {
                 </div>
             </div>
 
-            @if (! $certificate->is_walkin && $certificate->resident)
+            @if ($certificate->resident)
                 <dl class="space-y-3">
                     <div class="flex justify-between">
                         <dt class="text-zinc-500">{{ __('Age') }}</dt>
@@ -262,17 +262,6 @@ class extends Component {
                     <div class="flex justify-between">
                         <dt class="text-zinc-500">{{ __('Contact') }}</dt>
                         <dd class="font-medium">{{ $certificate->resident->contact_number ?? '—' }}</dd>
-                    </div>
-                </dl>
-            @else
-                <dl class="space-y-3">
-                    <div class="flex justify-between">
-                        <dt class="text-zinc-500">{{ __('Requester Type') }}</dt>
-                        <dd class="font-medium">{{ __('Walk-in / Unregistered') }}</dd>
-                    </div>
-                    <div class="flex justify-between">
-                        <dt class="text-zinc-500">{{ __('Contact') }}</dt>
-                        <dd class="font-medium">{{ $certificate->walkin_contact ?: '—' }}</dd>
                     </div>
                 </dl>
             @endif

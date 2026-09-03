@@ -152,8 +152,9 @@ test('blotter docx fills correct placeholders', function () {
     $resident = Resident::factory()->create([
         'first_name' => 'Maria',
         'last_name' => 'Santos',
-        'address' => 'Zone 2, Main Street',
-        'purok' => '5',
+        'house_number' => '7',
+        'street' => 'Main Street',
+        'purok' => 'Purok 5',
     ]);
     $blotter = Blotter::factory()->completed()->create([
         'resident_id' => $resident->id,
@@ -187,5 +188,10 @@ test('blotter docx fills correct placeholders', function () {
         ->toContain('Santos')
         ->toContain('Theft')
         ->toContain('Pedro Reyes')
+        ->toContain('7, Main Street, Purok 5')
+        // The template renders "Purok ${purok_name}", so the placeholder must be
+        // the bare number or the document reads "Purok Purok 5".
+        ->toContain('Purok 5,')
+        ->not->toContain('Purok Purok')
         ->toContain('April 1, 2026');
 });

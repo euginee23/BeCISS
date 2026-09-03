@@ -92,20 +92,9 @@ class CertificateDocumentService
         $resident = $certificate->resident;
         $barangay = BarangayProfile::get();
 
-        $residentName = $certificate->is_walkin
-            ? ($certificate->walkin_name ?: 'Walk-in Requester')
-            : ($resident?->full_name ?? 'Unknown Resident');
+        $residentName = $resident?->full_name ?? 'Unknown Resident';
 
-        $residentAddress = $certificate->is_walkin
-            ? collect([
-                $certificate->walkin_purok ? "Purok {$certificate->walkin_purok}." : null,
-                $certificate->walkin_house_number,
-                $certificate->walkin_street,
-            ])->filter()->implode(', ')
-            : collect([
-                $resident?->purok ? "Purok {$resident->purok}." : null,
-                $resident?->address,
-            ])->filter()->implode(', ');
+        $residentAddress = $resident?->address ?? '';
 
         $issuanceDate = Carbon::parse($formData['date_of_issuance']);
 
@@ -167,29 +156,14 @@ class CertificateDocumentService
         $barangay = BarangayProfile::get();
         $issuanceDate = Carbon::parse($formData['date_of_issuance']);
 
-        if ($blotter->is_walkin) {
-            $complainantName = $blotter->complainant_name ?? '';
-            $complainantAddress = collect([
-                $blotter->complainant_purok ? "Purok {$blotter->complainant_purok}" : null,
-                $blotter->complainant_house_number,
-                $blotter->complainant_street,
-            ])->filter()->implode(', ');
-            $purokName = $blotter->complainant_purok ?? '';
-        } else {
-            $resident = $blotter->resident;
-            $complainantName = $resident->full_name;
-            $complainantAddress = collect([
-                $resident->purok ? "Purok {$resident->purok}." : null,
-                $resident->address,
-            ])->filter()->implode(', ');
-            $purokName = $resident->purok ?? '';
-        }
+        $resident = $blotter->resident;
 
         return [
-            'resident_name' => $complainantName,
-            'resident_address' => $complainantAddress,
+            'resident_name' => $resident?->full_name ?? '',
+            'resident_address' => $resident?->address ?? '',
             'incident_type' => $blotter->type_label,
-            'purok_name' => $purokName,
+            // The template renders "Purok ${purok_name}", so pass the bare number.
+            'purok_name' => $resident?->purok_number ?? '',
             'barangay_name' => $barangay->barangay_name,
             'municipality_name' => $barangay->municipality ?? '',
             'province_name' => $barangay->province ?? '',

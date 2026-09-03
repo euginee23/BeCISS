@@ -207,60 +207,28 @@ class extends Component {
         <div class="rounded-lg border border-zinc-200 p-6 dark:border-zinc-700">
             <flux:heading size="lg" class="mb-4">{{ __('Complainant Information') }}</flux:heading>
 
-            @if ($blotter->is_walkin)
-                <div class="mb-4 flex items-center gap-3">
-                    <flux:badge size="sm" color="zinc">{{ __('Walk-in') }}</flux:badge>
+            <div class="flex items-center gap-4 mb-4">
+                <flux:avatar size="lg" name="{{ $blotter->resident->full_name }}" />
+                <div>
+                    <flux:heading size="base">{{ $blotter->resident->full_name }}</flux:heading>
+                    <flux:text class="text-zinc-500">{{ $blotter->resident->address }}</flux:text>
                 </div>
-                <dl class="space-y-3">
-                    <div class="flex justify-between">
-                        <dt class="text-zinc-500">{{ __('Name') }}</dt>
-                        <dd class="font-medium">{{ $blotter->complainant_name }}</dd>
-                    </div>
-                    @if ($blotter->complainant_purok)
-                        <div class="flex justify-between">
-                            <dt class="text-zinc-500">{{ __('Purok / Zone') }}</dt>
-                            <dd class="font-medium">{{ $blotter->complainant_purok }}</dd>
-                        </div>
-                    @endif
-                    @if ($blotter->complainant_house_number || $blotter->complainant_street)
-                        <div class="flex justify-between">
-                            <dt class="text-zinc-500">{{ __('Address') }}</dt>
-                            <dd class="font-medium">
-                                {{ implode(' ', array_filter([$blotter->complainant_house_number, $blotter->complainant_street])) ?: '—' }}
-                            </dd>
-                        </div>
-                    @endif
-                    @if ($blotter->complainant_contact)
-                        <div class="flex justify-between">
-                            <dt class="text-zinc-500">{{ __('Contact') }}</dt>
-                            <dd class="font-medium">{{ $blotter->complainant_contact }}</dd>
-                        </div>
-                    @endif
-                </dl>
-            @else
-                <div class="flex items-center gap-4 mb-4">
-                    <flux:avatar size="lg" name="{{ $blotter->resident->full_name }}" />
-                    <div>
-                        <flux:heading size="base">{{ $blotter->resident->full_name }}</flux:heading>
-                        <flux:text class="text-zinc-500">{{ $blotter->resident->address }}</flux:text>
-                    </div>
-                </div>
+            </div>
 
-                <dl class="space-y-3">
-                    <div class="flex justify-between">
-                        <dt class="text-zinc-500">{{ __('Age') }}</dt>
-                        <dd class="font-medium">{{ $blotter->resident->age }} {{ __('years old') }}</dd>
-                    </div>
-                    <div class="flex justify-between">
-                        <dt class="text-zinc-500">{{ __('Gender') }}</dt>
-                        <dd class="font-medium">{{ ucfirst($blotter->resident->gender) }}</dd>
-                    </div>
-                    <div class="flex justify-between">
-                        <dt class="text-zinc-500">{{ __('Contact') }}</dt>
-                        <dd class="font-medium">{{ $blotter->resident->contact_number ?? '—' }}</dd>
-                    </div>
-                </dl>
-            @endif
+            <dl class="space-y-3">
+                <div class="flex justify-between">
+                    <dt class="text-zinc-500">{{ __('Age') }}</dt>
+                    <dd class="font-medium">{{ $blotter->resident->age }} {{ __('years old') }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-zinc-500">{{ __('Gender') }}</dt>
+                    <dd class="font-medium">{{ ucfirst($blotter->resident->gender) }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-zinc-500">{{ __('Contact') }}</dt>
+                    <dd class="font-medium">{{ $blotter->resident->contact_number ?? '—' }}</dd>
+                </div>
+            </dl>
         </div>
 
         {{-- Blotter Details --}}

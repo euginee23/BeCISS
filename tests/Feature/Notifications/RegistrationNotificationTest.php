@@ -67,7 +67,10 @@ test('submitting a profile sends pending registration email to all admins', func
         ->set('gender', 'male')
         ->set('civil_status', 'single')
         ->set('contact_number', '09171234567')
-        ->set('address', '123 Rizal Street')
+        ->set('house_number', '123')
+        ->set('street', 'Rizal Street')
+        ->set('purok', 'Purok 1')
+        ->set('residency_start_date', '2015-01-01')
         ->call('submitProfile');
 
     Mail::assertSent(NewPendingRegistration::class, function ($mail) use ($admin1) {
@@ -93,7 +96,10 @@ test('submitting a profile does not send pending registration email to non-admin
         ->set('gender', 'male')
         ->set('civil_status', 'single')
         ->set('contact_number', '09171234567')
-        ->set('address', '123 Rizal Street')
+        ->set('house_number', '123')
+        ->set('street', 'Rizal Street')
+        ->set('purok', 'Purok 1')
+        ->set('residency_start_date', '2015-01-01')
         ->call('submitProfile');
 
     Mail::assertNotSent(NewPendingRegistration::class, function ($mail) use ($staffUser) {
@@ -117,7 +123,10 @@ test('no pending registration email sent when no admins exist', function () {
         ->set('gender', 'male')
         ->set('civil_status', 'single')
         ->set('contact_number', '09171234567')
-        ->set('address', '123 Rizal Street')
+        ->set('house_number', '123')
+        ->set('street', 'Rizal Street')
+        ->set('purok', 'Purok 1')
+        ->set('residency_start_date', '2015-01-01')
         ->call('submitProfile');
 
     Mail::assertNothingSent();

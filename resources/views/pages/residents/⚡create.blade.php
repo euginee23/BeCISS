@@ -18,9 +18,10 @@ class extends Component {
     public string $gender = '';
     public string $civil_status = '';
     public string $contact_number = '';
-    public string $address = '';
+    public string $house_number = '';
+    public string $street = '';
     public string $purok = '';
-    public ?int $years_of_residency = null;
+    public string $residency_start_date = '';
     public string $occupation = '';
     public ?float $monthly_income = null;
     public bool $is_voter = false;
@@ -42,9 +43,10 @@ class extends Component {
             'gender' => ['required', Rule::in(['male', 'female'])],
             'civil_status' => ['required', Rule::in(['single', 'married', 'widowed', 'separated'])],
             'contact_number' => ['nullable', 'string', 'max:50'],
-            'address' => ['required', 'string', 'max:500'],
-            'purok' => ['nullable', 'string', 'max:100'],
-            'years_of_residency' => ['nullable', 'integer', 'min:0', 'max:150'],
+            'house_number' => ['nullable', 'string', 'max:50'],
+            'street' => ['required', 'string', 'max:255'],
+            'purok' => ['required', Rule::in(Resident::PUROKS)],
+            'residency_start_date' => ['required', 'date', 'before_or_equal:today'],
             'occupation' => ['nullable', 'string', 'max:255'],
             'monthly_income' => ['nullable', 'numeric', 'min:0'],
             'is_voter' => ['boolean'],
@@ -84,19 +86,19 @@ class extends Component {
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <flux:field class="sm:col-span-1">
                     <flux:label>{{ __('First Name') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:input wire:model="first_name" required />
+                    <flux:input wire:model="first_name" required x-capitalize />
                     <flux:error name="first_name" />
                 </flux:field>
 
                 <flux:field class="sm:col-span-1">
                     <flux:label>{{ __('Middle Name') }}</flux:label>
-                    <flux:input wire:model="middle_name" />
+                    <flux:input wire:model="middle_name" x-capitalize />
                     <flux:error name="middle_name" />
                 </flux:field>
 
                 <flux:field class="sm:col-span-1">
                     <flux:label>{{ __('Last Name') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:input wire:model="last_name" required />
+                    <flux:input wire:model="last_name" required x-capitalize />
                     <flux:error name="last_name" />
                 </flux:field>
 
@@ -151,27 +153,25 @@ class extends Component {
             <flux:heading size="lg" class="mb-4">{{ __('Address Information') }}</flux:heading>
 
             <div class="grid gap-4 sm:grid-cols-2">
-                <flux:field class="sm:col-span-2">
-                    <flux:label>{{ __('Address') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:textarea wire:model="address" rows="2" required placeholder="{{ __('House No., Street, Sitio') }}" />
-                    <flux:error name="address" />
+                <flux:field>
+                    <flux:label>{{ __('House No.') }}</flux:label>
+                    <flux:input wire:model="house_number" placeholder="{{ __('e.g. 123') }}" />
+                    <flux:error name="house_number" />
                 </flux:field>
 
                 <flux:field>
-                    <flux:label>{{ __('Purok') }}</flux:label>
-                    <flux:select wire:model="purok">
-                        <option value="">{{ __('Select purok') }}</option>
-                        @for ($i = 1; $i <= 10; $i++)
-                            <option value="Purok {{ $i }}">Purok {{ $i }}</option>
-                        @endfor
-                    </flux:select>
-                    <flux:error name="purok" />
+                    <flux:label>{{ __('Street') }} <span class="text-red-500">*</span></flux:label>
+                    <flux:input wire:model="street" required x-capitalize placeholder="{{ __('e.g. Mabini Street') }}" />
+                    <flux:error name="street" />
                 </flux:field>
 
+                <x-purok-select wire="purok" required />
+
                 <flux:field>
-                    <flux:label>{{ __('Years of Residency') }}</flux:label>
-                    <flux:input wire:model="years_of_residency" type="number" min="0" max="150" />
-                    <flux:error name="years_of_residency" />
+                    <flux:label>{{ __('Registered in barangay since') }} <span class="text-red-500">*</span></flux:label>
+                    <flux:input wire:model="residency_start_date" type="date" required max="{{ now()->toDateString() }}" />
+                    <flux:description>{{ __('Years of residency is computed from this date.') }}</flux:description>
+                    <flux:error name="residency_start_date" />
                 </flux:field>
             </div>
         </div>

@@ -235,8 +235,9 @@ test('barangay clearance fills correct placeholders in generated docx', function
     $resident = Resident::factory()->create([
         'first_name' => 'Juan',
         'last_name' => 'Dela Cruz',
-        'address' => 'Zone 5, Some Street',
-        'purok' => '3',
+        'house_number' => '12',
+        'street' => 'Some Street',
+        'purok' => 'Purok 3',
     ]);
     $certificate = Certificate::factory()->barangayClearance()->completed()->create([
         'resident_id' => $resident->id,
@@ -265,7 +266,8 @@ test('barangay clearance fills correct placeholders in generated docx', function
     expect($xml)
         ->toContain('Juan')
         ->toContain('Dela Cruz')
-        ->toContain('Purok 3., Zone 5, Some Street')
+        ->toContain('12, Some Street, Purok 3')
+        ->not->toContain('Purok Purok')
         ->toContain('April 1, 2026');
 });
 
@@ -322,8 +324,9 @@ test('barangay indigency fills correct placeholders in generated docx', function
     $resident = Resident::factory()->create([
         'first_name' => 'Maria',
         'last_name' => 'Santos',
-        'address' => 'Zone 2, Main Road',
-        'purok' => '1',
+        'house_number' => '8',
+        'street' => 'Main Road',
+        'purok' => 'Purok 1',
     ]);
     $certificate = Certificate::factory()->indigency()->completed()->create([
         'resident_id' => $resident->id,
@@ -350,7 +353,8 @@ test('barangay indigency fills correct placeholders in generated docx', function
     expect($xml)
         ->toContain('Maria')
         ->toContain('Santos')
-        ->toContain('Purok 1., Zone 2, Main Road')
+        ->toContain('8, Main Road, Purok 1')
+        ->not->toContain('Purok Purok')
         ->toContain('10')
         ->toContain('April 2026')
         ->toContain('April 10, 2026');

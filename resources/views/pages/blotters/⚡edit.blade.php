@@ -15,20 +15,7 @@ class extends Component
 {
     public Blotter $blotter;
 
-    public string $complainantType = 'registered';
-
     public ?int $resident_id = null;
-
-    // Walk-in complainant fields
-    public string $complainant_name = '';
-
-    public string $complainant_purok = '';
-
-    public string $complainant_street = '';
-
-    public string $complainant_house_number = '';
-
-    public string $complainant_contact = '';
 
     // Incident details
     public string $incident_type = '';
@@ -53,18 +40,7 @@ class extends Component
     {
         $this->blotter = $blotter;
 
-        if ($blotter->resident_id) {
-            $this->complainantType = 'registered';
-            $this->resident_id = $blotter->resident_id;
-        } else {
-            $this->complainantType = 'walkin';
-            $this->complainant_name = $blotter->complainant_name ?? '';
-            $this->complainant_purok = $blotter->complainant_purok ?? '';
-            $this->complainant_street = $blotter->complainant_street ?? '';
-            $this->complainant_house_number = $blotter->complainant_house_number ?? '';
-            $this->complainant_contact = $blotter->complainant_contact ?? '';
-        }
-
+        $this->resident_id = $blotter->resident_id;
         $this->incident_type = $blotter->incident_type;
         $this->incident_type_other = $blotter->incident_type_other ?? '';
         $this->incident_datetime = $blotter->incident_datetime->format('Y-m-d\TH:i');
@@ -81,7 +57,8 @@ class extends Component
      */
     protected function rules(): array
     {
-        $rules = [
+        return [
+            'resident_id' => ['required', 'exists:residents,id'],
             'incident_type' => ['required', 'in:' . implode(',', array_keys(Blotter::TYPES))],
             'incident_type_other' => ['nullable', 'string', 'max:255', 'required_if:incident_type,other'],
             'incident_datetime' => ['required', 'date'],
@@ -92,25 +69,14 @@ class extends Component
             'remarks' => ['nullable', 'string', 'max:1000'],
             'or_number' => ['nullable', 'string', 'max:50'],
         ];
-
-        if ($this->complainantType === 'registered') {
-            $rules['resident_id'] = ['required', 'exists:residents,id'];
-        } else {
-            $rules['complainant_name'] = ['required', 'string', 'max:255'];
-            $rules['complainant_purok'] = ['nullable', 'string', 'max:100'];
-            $rules['complainant_street'] = ['nullable', 'string', 'max:255'];
-            $rules['complainant_house_number'] = ['nullable', 'string', 'max:50'];
-            $rules['complainant_contact'] = ['nullable', 'string', 'max:20'];
-        }
-
-        return $rules;
     }
 
     public function save(): void
     {
         $this->validate();
 
-        $data = [
+        $this->blotter->update([
+            'resident_id' => $this->resident_id,
             'incident_type' => $this->incident_type,
             'incident_type_other' => $this->incident_type === 'other' ? $this->incident_type_other : null,
             'incident_datetime' => $this->incident_datetime,
@@ -120,26 +86,7 @@ class extends Component
             'narrative' => $this->narrative,
             'remarks' => $this->remarks ?: null,
             'or_number' => $this->or_number ?: null,
-        ];
-
-        if ($this->complainantType === 'registered') {
-            $data['resident_id'] = $this->resident_id;
-            // Clear walk-in fields
-            $data['complainant_name'] = null;
-            $data['complainant_purok'] = null;
-            $data['complainant_street'] = null;
-            $data['complainant_house_number'] = null;
-            $data['complainant_contact'] = null;
-        } else {
-            $data['resident_id'] = null;
-            $data['complainant_name'] = $this->complainant_name;
-            $data['complainant_purok'] = $this->complainant_purok ?: null;
-            $data['complainant_street'] = $this->complainant_street ?: null;
-            $data['complainant_house_number'] = $this->complainant_house_number ?: null;
-            $data['complainant_contact'] = $this->complainant_contact ?: null;
-        }
-
-        $this->blotter->update($data);
+        ]);
 
         session()->flash('status', __('Blotter report updated successfully.'));
 
@@ -174,58 +121,16 @@ class extends Component
         <div class="rounded-lg border border-zinc-200 p-6 dark:border-zinc-700">
             <flux:heading size="lg" class="mb-4">{{ __('Complainant') }}</flux:heading>
 
-            <flux:field class="mb-4">
-                <flux:label>{{ __('Complainant Type') }}</flux:label>
-                <flux:radio.group wire:model.live="complainantType">
-                    <flux:radio value="registered" label="{{ __('Registered Resident') }}" />
-                    <flux:radio value="walkin" label="{{ __('Walk-in / Unregistered') }}" />
-                </flux:radio.group>
+            <flux:field>
+                <flux:label>{{ __('Resident') }} <span class="text-red-500">*</span></flux:label>
+                <flux:select wire:model="resident_id" required>
+                    <option value="">{{ __('Select a resident') }}</option>
+                    @foreach ($this->residents as $resident)
+                        <option value="{{ $resident->id }}">{{ $resident->full_name }} — {{ $resident->address }}</option>
+                    @endforeach
+                </flux:select>
+                <flux:error name="resident_id" />
             </flux:field>
-
-            @if ($complainantType === 'registered')
-                <flux:field>
-                    <flux:label>{{ __('Resident') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:select wire:model="resident_id" required>
-                        <option value="">{{ __('Select a resident') }}</option>
-                        @foreach ($this->residents as $resident)
-                            <option value="{{ $resident->id }}">{{ $resident->full_name }} — {{ $resident->address }}</option>
-                        @endforeach
-                    </flux:select>
-                    <flux:error name="resident_id" />
-                </flux:field>
-            @else
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <flux:field class="sm:col-span-2">
-                        <flux:label>{{ __('Full Name') }} <span class="text-red-500">*</span></flux:label>
-                        <flux:input wire:model="complainant_name" placeholder="{{ __('Complainant\'s full name') }}" required />
-                        <flux:error name="complainant_name" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>{{ __('Purok / Zone') }}</flux:label>
-                        <flux:input wire:model="complainant_purok" placeholder="{{ __('e.g. Purok 3') }}" />
-                        <flux:error name="complainant_purok" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>{{ __('House Number') }}</flux:label>
-                        <flux:input wire:model="complainant_house_number" placeholder="{{ __('e.g. 123') }}" />
-                        <flux:error name="complainant_house_number" />
-                    </flux:field>
-
-                    <flux:field class="sm:col-span-2">
-                        <flux:label>{{ __('Street / Barangay') }}</flux:label>
-                        <flux:input wire:model="complainant_street" placeholder="{{ __('Street name or barangay') }}" />
-                        <flux:error name="complainant_street" />
-                    </flux:field>
-
-                    <flux:field>
-                        <flux:label>{{ __('Contact Number') }}</flux:label>
-                        <flux:input wire:model="complainant_contact" type="tel" placeholder="{{ __('e.g. 09XX-XXX-XXXX') }}" />
-                        <flux:error name="complainant_contact" />
-                    </flux:field>
-                </div>
-            @endif
         </div>
 
         {{-- Incident Details --}}

@@ -1,8 +1,10 @@
 <?php
 
+use App\Mail\RegistrationRejected;
 use App\Mail\ResidentApproved;
 use App\Models\Resident;
 use App\Notifications\ResidentNotification;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -69,7 +71,19 @@ class extends Component {
     public function deleteResident(): void
     {
         if ($this->residentToDelete) {
-            Resident::find($this->residentToDelete)?->delete();
+            $resident = Resident::with('user')->find($this->residentToDelete);
+
+            if ($resident) {
+                $user = $resident->user;
+
+                // Soft delete only: certificates, appointments and blotters cascade on a
+                // hard delete and would take the resident's history with them. Removing
+                // the account frees the email address; the nullOnDelete foreign key
+                // clears user_id on the retained record.
+                $resident->delete();
+                $user?->delete();
+            }
+
             $this->showDeleteModal = false;
             $this->residentToDelete = null;
         }
@@ -101,25 +115,32 @@ class extends Component {
         $this->showRejectModal = true;
     }
 
+    /**
+     * Reject a pending registration.
+     *
+     * The account and resident record are removed so the applicant can register
+     * again with the same email address once the issue has been resolved.
+     */
     public function rejectResident(): void
     {
         $this->validate([
-            'rejectionReason' => ['required', 'string', 'max:500'],
+            'rejectionReason' => ['required', 'string', 'max:1000'],
         ]);
 
         if ($this->residentToReject) {
             $resident = Resident::with('user')->findOrFail($this->residentToReject);
-            $resident->update([
-                'status' => 'rejected',
-                'rejection_reason' => $this->rejectionReason,
-            ]);
+            $user = $resident->user;
+            $reason = $this->rejectionReason;
 
-            $resident->user?->notify(new ResidentNotification(
-                type: 'registration_rejected',
-                title: 'Registration Not Approved',
-                body: 'Your registration was not approved. Reason: ' . $this->rejectionReason,
-                url: route('complete-profile'),
-            ));
+            // Send before deleting — afterwards there is no address to send to.
+            if ($user) {
+                Mail::to($user->email)->send(new RegistrationRejected($resident->full_name, $reason));
+            }
+
+            DB::transaction(function () use ($resident, $user): void {
+                $resident->forceDelete();
+                $user?->delete();
+            });
 
             $this->showRejectModal = false;
             $this->residentToReject = null;
@@ -144,7 +165,8 @@ class extends Component {
                     ->where('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%")
                     ->orWhere('middle_name', 'like', "%{$search}%")
-                    ->orWhere('address', 'like', "%{$search}%")
+                    ->orWhere('house_number', 'like', "%{$search}%")
+                    ->orWhere('street', 'like', "%{$search}%")
                     ->orWhere('purok', 'like', "%{$search}%")
                 )
             )
@@ -382,7 +404,7 @@ class extends Component {
             <div>
                 <flux:heading size="lg">{{ __('Reject Registration') }}</flux:heading>
                 <flux:text class="mt-2">
-                    {{ __('Please provide a reason for rejecting this registration. The resident will be able to see this reason and resubmit their information.') }}
+                    {{ __('Please provide a reason for rejecting this registration. The reason is emailed to the applicant, and their account is removed so they can register again with the same email address.') }}
                 </flux:text>
             </div>
 

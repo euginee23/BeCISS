@@ -3,6 +3,7 @@
 use App\Models\Blotter;
 use App\Models\Resident;
 use App\Models\User;
+use Livewire\Livewire;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,17 +49,22 @@ test('staff can access blotter index', function () {
         ->assertSuccessful();
 });
 
-test('admin can view walk-in blotters in index', function () {
+test('admin sees the resident name for each blotter in the index', function () {
     $user = User::factory()->admin()->create();
 
-    Blotter::factory()->walkin()->create([
-        'complainant_name' => 'Walk-in Sample Complainant',
+    $resident = Resident::factory()->create([
+        'first_name' => 'Sample',
+        'last_name' => 'Complainant',
+        'middle_name' => null,
+        'suffix' => null,
     ]);
+
+    Blotter::factory()->for($resident)->create();
 
     $this->actingAs($user)
         ->get(route('blotters.index'))
         ->assertSuccessful()
-        ->assertSeeText('Walk-in Sample Complainant');
+        ->assertSeeText('Sample Complainant');
 });
 
 test('resident cannot access admin blotter index', function () {
@@ -162,25 +168,25 @@ test('resident has many blotters', function () {
 
 /*
 |--------------------------------------------------------------------------
-| Walk-in Complainant
+| Registered Complainant Required
 |--------------------------------------------------------------------------
 */
 
-test('walk-in blotter can be created without a resident', function () {
-    $blotter = Blotter::factory()->walkin()->create([
-        'complainant_name' => 'Juan dela Cruz',
-        'complainant_purok' => 'Purok 4',
-    ]);
+test('a blotter must belong to a registered resident', function () {
+    $this->actingAs(User::factory()->admin()->create());
 
-    expect($blotter->resident_id)->toBeNull();
-    expect($blotter->complainant_name)->toBe('Juan dela Cruz');
-    expect($blotter->is_walkin)->toBeTrue();
+    Livewire::test('pages::blotters.create')
+        ->set('resident_id', null)
+        ->set('incident_type', array_key_first(Blotter::TYPES))
+        ->set('incident_datetime', now()->subDay()->format('Y-m-d\TH:i'))
+        ->set('narrative', 'A sufficiently detailed narrative of the incident.')
+        ->call('save')
+        ->assertHasErrors(['resident_id']);
 });
 
-test('registered blotter is not a walk-in', function () {
+test('every blotter is linked to a resident', function () {
     $blotter = Blotter::factory()->create();
 
-    expect($blotter->is_walkin)->toBeFalse();
     expect($blotter->resident_id)->not->toBeNull();
 });
 
@@ -202,11 +208,17 @@ test('blotter type label falls back to Other when no custom text', function () {
     expect($blotter->type_label)->toBe('Other');
 });
 
-test('walk-in blotter show page renders complainant name', function () {
+test('blotter show page renders the resident name', function () {
     $user = User::factory()->admin()->create();
-    $blotter = Blotter::factory()->walkin()->create([
-        'complainant_name' => 'Maria Santos',
+
+    $resident = Resident::factory()->create([
+        'first_name' => 'Maria',
+        'last_name' => 'Santos',
+        'middle_name' => null,
+        'suffix' => null,
     ]);
+
+    $blotter = Blotter::factory()->for($resident)->create();
 
     $this->actingAs($user)
         ->get(route('blotters.show', $blotter))

@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\ProfileValidationRules;
+use App\Models\Resident;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -19,15 +20,16 @@ class extends Component {
     public string $name = '';
     public string $email = '';
 
-    public string $address = '';
+    public string $house_number = '';
+    public string $street = '';
     public string $purok = '';
+    public string $residency_start_date = '';
     public string $birthdate = '';
     public string $gender = '';
     public string $civil_status = '';
     public string $contact_number = '';
     public string $occupation = '';
     public ?float $monthly_income = null;
-    public ?int $years_of_residency = null;
     public bool $is_voter = false;
 
     /**
@@ -40,15 +42,16 @@ class extends Component {
 
         if ($this->hasResidentProfile) {
             $resident = Auth::user()->resident;
-            $this->address = $resident->address ?? '';
+            $this->house_number = $resident->house_number ?? '';
+            $this->street = $resident->street ?? '';
             $this->purok = $resident->purok ?? '';
+            $this->residency_start_date = $resident->residency_start_date?->format('Y-m-d') ?? '';
             $this->birthdate = $resident->birthdate?->format('Y-m-d') ?? '';
             $this->gender = $resident->gender ?? '';
             $this->civil_status = $resident->civil_status ?? '';
             $this->contact_number = $resident->contact_number ?? '';
             $this->occupation = $resident->occupation ?? '';
             $this->monthly_income = $resident->monthly_income;
-            $this->years_of_residency = $resident->years_of_residency;
             $this->is_voter = $resident->is_voter ?? false;
         }
     }
@@ -79,15 +82,16 @@ class extends Component {
     public function updateResidentProfile(): void
     {
         $validated = $this->validate([
-            'address' => ['required', 'string', 'max:500'],
-            'purok' => ['nullable', 'string', 'max:100'],
+            'house_number' => ['nullable', 'string', 'max:50'],
+            'street' => ['required', 'string', 'max:255'],
+            'purok' => ['required', Rule::in(Resident::PUROKS)],
+            'residency_start_date' => ['required', 'date', 'before_or_equal:today'],
             'birthdate' => ['required', 'date', 'before:today'],
             'gender' => ['required', Rule::in(['male', 'female'])],
             'civil_status' => ['required', Rule::in(['single', 'married', 'widowed', 'separated'])],
             'contact_number' => ['nullable', 'string', 'max:50'],
             'occupation' => ['nullable', 'string', 'max:255'],
             'monthly_income' => ['nullable', 'numeric', 'min:0'],
-            'years_of_residency' => ['nullable', 'integer', 'min:0', 'max:150'],
             'is_voter' => ['boolean'],
         ]);
 
@@ -224,22 +228,21 @@ class extends Component {
                         </flux:field>
                     </div>
 
-                    <flux:field>
-                        <flux:label>{{ __('Address') }} <span class="text-red-500">*</span></flux:label>
-                        <flux:textarea wire:model="address" rows="2" required placeholder="{{ __('House No., Street, Sitio') }}" />
-                        <flux:error name="address" />
-                    </flux:field>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <flux:field>
+                            <flux:label>{{ __('House No.') }}</flux:label>
+                            <flux:input wire:model="house_number" placeholder="{{ __('e.g. 123') }}" />
+                            <flux:error name="house_number" />
+                        </flux:field>
 
-                    <flux:field>
-                        <flux:label>{{ __('Purok') }}</flux:label>
-                        <flux:select wire:model="purok">
-                            <option value="">{{ __('Select purok') }}</option>
-                            @for ($i = 1; $i <= 10; $i++)
-                                <option value="Purok {{ $i }}">Purok {{ $i }}</option>
-                            @endfor
-                        </flux:select>
-                        <flux:error name="purok" />
-                    </flux:field>
+                        <flux:field>
+                            <flux:label>{{ __('Street') }} <span class="text-red-500">*</span></flux:label>
+                            <flux:input wire:model="street" required x-capitalize placeholder="{{ __('e.g. Mabini Street') }}" />
+                            <flux:error name="street" />
+                        </flux:field>
+                    </div>
+
+                    <x-purok-select wire="purok" required />
 
                     <div class="grid gap-4 sm:grid-cols-2">
                         <flux:field>
@@ -257,9 +260,9 @@ class extends Component {
 
                     <div class="grid gap-4 sm:grid-cols-2">
                         <flux:field>
-                            <flux:label>{{ __('Years of residency') }}</flux:label>
-                            <flux:input wire:model="years_of_residency" type="number" min="0" max="150" />
-                            <flux:error name="years_of_residency" />
+                            <flux:label>{{ __('Registered in barangay since') }} <span class="text-red-500">*</span></flux:label>
+                            <flux:input wire:model="residency_start_date" type="date" required max="{{ now()->toDateString() }}" />
+                            <flux:error name="residency_start_date" />
                         </flux:field>
 
                         <div class="flex items-end pb-2">

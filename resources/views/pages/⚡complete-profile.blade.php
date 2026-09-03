@@ -4,6 +4,7 @@ use App\Mail\NewPendingRegistration;
 use App\Models\Resident;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
@@ -37,18 +38,41 @@ class extends Component {
     #[Validate('required|string|max:20')]
     public string $contact_number = '';
 
-    #[Validate('required|string|max:500')]
-    public string $address = '';
+    #[Validate('nullable|string|max:50')]
+    public ?string $house_number = '';
 
-    #[Validate('nullable|string|max:100')]
+    #[Validate('required|string|max:255')]
+    public string $street = '';
+
     public ?string $purok = '';
 
+    #[Validate('required|date|before_or_equal:today')]
+    public ?string $residency_start_date = '';
+
     public ?string $rejectionReason = null;
+
+    /**
+     * Validation rules that need to be built at runtime.
+     *
+     * @return array<string, mixed>
+     */
+    protected function rules(): array
+    {
+        return [
+            'purok' => ['required', Rule::in(Resident::PUROKS)],
+        ];
+    }
 
     public function mount(): void
     {
         $user = auth()->user();
         $resident = $user->resident;
+
+        // Seed the name from the account so it is not asked for a second time.
+        $this->first_name = $user->first_name ?? '';
+        $this->middle_name = $user->middle_name ?? '';
+        $this->last_name = $user->last_name ?? '';
+        $this->suffix = $user->suffix ?? '';
 
         if ($resident?->isRejected()) {
             $this->rejectionReason = $resident->rejection_reason;
@@ -60,8 +84,10 @@ class extends Component {
             $this->gender = $resident->gender;
             $this->civil_status = $resident->civil_status;
             $this->contact_number = $resident->contact_number ?? '';
-            $this->address = $resident->address;
+            $this->house_number = $resident->house_number ?? '';
+            $this->street = $resident->street ?? '';
             $this->purok = $resident->purok ?? '';
+            $this->residency_start_date = $resident->residency_start_date?->format('Y-m-d') ?? '';
         }
     }
 
@@ -82,8 +108,10 @@ class extends Component {
             'gender' => $this->gender,
             'civil_status' => $this->civil_status,
             'contact_number' => $this->contact_number,
-            'address' => $this->address,
-            'purok' => $this->purok ?: null,
+            'house_number' => $this->house_number ?: null,
+            'street' => $this->street,
+            'purok' => $this->purok,
+            'residency_start_date' => $this->residency_start_date,
             'status' => 'pending',
             'rejection_reason' => null,
         ];
@@ -93,6 +121,15 @@ class extends Component {
         } else {
             $resident = Resident::create($data);
         }
+
+        // Keep the account name in step with any correction made here.
+        $user->update([
+            'first_name' => $resident->first_name,
+            'middle_name' => $resident->middle_name,
+            'last_name' => $resident->last_name,
+            'suffix' => $resident->suffix,
+            'name' => $resident->full_name,
+        ]);
 
         $admins = User::where('role', 'admin')->get();
 
@@ -149,12 +186,12 @@ class extends Component {
             <div class="grid grid-cols-2 gap-4">
                 <flux:field>
                     <flux:label>{{ __('First Name') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:input wire:model="first_name" required autofocus />
+                    <flux:input wire:model="first_name" required autofocus x-capitalize />
                     <flux:error name="first_name" />
                 </flux:field>
                 <flux:field>
                     <flux:label>{{ __('Last Name') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:input wire:model="last_name" required />
+                    <flux:input wire:model="last_name" required x-capitalize />
                     <flux:error name="last_name" />
                 </flux:field>
             </div>
@@ -162,7 +199,7 @@ class extends Component {
             <div class="grid grid-cols-2 gap-4">
                 <flux:field>
                     <flux:label>{{ __('Middle Name') }}</flux:label>
-                    <flux:input wire:model="middle_name" placeholder="{{ __('Optional') }}" />
+                    <flux:input wire:model="middle_name" placeholder="{{ __('Optional') }}" x-capitalize />
                     <flux:error name="middle_name" />
                 </flux:field>
                 <flux:field>
@@ -232,16 +269,26 @@ class extends Component {
                 <h2 class="text-sm font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">{{ __('Address & Location') }}</h2>
             </div>
 
-            <flux:field>
-                <flux:label>{{ __('Home Address') }} <span class="text-red-500">*</span></flux:label>
-                <flux:textarea wire:model="address" required rows="2" placeholder="{{ __('House No., Street, Sitio') }}" />
-                <flux:error name="address" />
-            </flux:field>
+            <div class="grid grid-cols-2 gap-4">
+                <flux:field>
+                    <flux:label>{{ __('House No.') }}</flux:label>
+                    <flux:input wire:model="house_number" placeholder="{{ __('e.g. 123') }}" />
+                    <flux:error name="house_number" />
+                </flux:field>
+                <flux:field>
+                    <flux:label>{{ __('Street') }} <span class="text-red-500">*</span></flux:label>
+                    <flux:input wire:model="street" required x-capitalize placeholder="{{ __('e.g. Mabini Street') }}" />
+                    <flux:error name="street" />
+                </flux:field>
+            </div>
+
+            <x-purok-select wire="purok" required />
 
             <flux:field>
-                <flux:label>{{ __('Purok / Zone') }}</flux:label>
-                <flux:input wire:model="purok" placeholder="{{ __('Optional') }}" />
-                <flux:error name="purok" />
+                <flux:label>{{ __('Registered in this barangay since') }} <span class="text-red-500">*</span></flux:label>
+                <flux:input type="date" wire:model="residency_start_date" required max="{{ now()->toDateString() }}" />
+                <flux:description>{{ __('Used to compute how long you have lived in the barangay.') }}</flux:description>
+                <flux:error name="residency_start_date" />
             </flux:field>
         </div>
 

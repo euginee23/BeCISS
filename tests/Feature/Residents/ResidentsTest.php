@@ -72,13 +72,40 @@ describe('residents create', function () {
             ->set('birthdate', '1990-05-15')
             ->set('gender', 'male')
             ->set('civil_status', 'single')
-            ->set('address', '123 Main St, Barangay Centro')
+            ->set('house_number', '123')
+            ->set('street', 'Main Street')
+            ->set('purok', 'Purok 2')
+            ->set('residency_start_date', now()->subYears(5)->toDateString())
             ->call('save')
             ->assertRedirect(route('residents.index'));
 
         $this->assertDatabaseHas('residents', [
             'first_name' => 'Juan',
             'last_name' => 'Dela Cruz',
+            'house_number' => '123',
+            'street' => 'Main Street',
+            'purok' => 'Purok 2',
+        ]);
+    });
+
+    it('capitalizes names and street on save', function () {
+        Livewire::actingAs($this->admin)
+            ->test('pages::residents.create')
+            ->set('first_name', 'juan')
+            ->set('last_name', 'dela cruz')
+            ->set('birthdate', '1990-05-15')
+            ->set('gender', 'male')
+            ->set('civil_status', 'single')
+            ->set('street', 'mabini street')
+            ->set('purok', 'Purok 2')
+            ->set('residency_start_date', now()->subYears(5)->toDateString())
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('residents', [
+            'first_name' => 'Juan',
+            'last_name' => 'Dela Cruz',
+            'street' => 'Mabini Street',
         ]);
     });
 
@@ -88,7 +115,7 @@ describe('residents create', function () {
             ->set('first_name', '')
             ->set('last_name', '')
             ->call('save')
-            ->assertHasErrors(['first_name', 'last_name', 'birthdate', 'gender', 'civil_status', 'address']);
+            ->assertHasErrors(['first_name', 'last_name', 'birthdate', 'gender', 'civil_status', 'street', 'purok', 'residency_start_date']);
     });
 });
 

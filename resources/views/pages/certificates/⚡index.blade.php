@@ -82,7 +82,6 @@ class extends Component {
                 $sub->where('certificate_number', 'like', "%{$search}%")
                     ->orWhere('purpose', 'like', "%{$search}%")
                     ->orWhere('purpose_other', 'like', "%{$search}%")
-                    ->orWhere('walkin_name', 'like', "%{$search}%")
                     ->orWhereHas('resident', fn ($q) => $q
                         ->where('first_name', 'like', "%{$search}%")
                         ->orWhere('last_name', 'like', "%{$search}%")
@@ -158,12 +157,7 @@ class extends Component {
                     <flux:table.cell>
                         <div class="flex items-center gap-3">
                             <flux:avatar size="xs" name="{{ $certificate->requester_name }}" />
-                            <div>
-                                <div>{{ $certificate->requester_name }}</div>
-                                @if ($certificate->is_walkin)
-                                    <div class="text-xs text-zinc-500">{{ __('Walk-in') }}</div>
-                                @endif
-                            </div>
+                            <div>{{ $certificate->requester_name }}</div>
                         </div>
                     </flux:table.cell>
                     <flux:table.cell>{{ $certificate->type_label }}</flux:table.cell>

@@ -1,9 +1,11 @@
 <?php
 
+use App\Mail\RegistrationRejected;
 use App\Models\Certificate;
 use App\Models\Resident;
 use App\Models\User;
 use App\Notifications\ResidentNotification;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 
@@ -30,11 +32,11 @@ test('approving a resident sends database notification to the resident', functio
     });
 });
 
-test('rejecting a resident sends database notification to the resident', function () {
-    Notification::fake();
+test('rejecting a resident emails the reason and removes the account', function () {
+    Mail::fake();
 
     $admin = User::factory()->admin()->create();
-    $residentUser = User::factory()->resident()->create();
+    $residentUser = User::factory()->resident()->create(['email' => 'applicant@example.com']);
     Resident::factory()->pending()->create(['user_id' => $residentUser->id]);
     $resident = $residentUser->resident;
 
@@ -44,9 +46,13 @@ test('rejecting a resident sends database notification to the resident', functio
         ->set('rejectionReason', 'Incomplete documents')
         ->call('rejectResident');
 
-    Notification::assertSentTo($residentUser, ResidentNotification::class, function ($n) {
-        return $n->type === 'registration_rejected';
+    Mail::assertSent(RegistrationRejected::class, function (RegistrationRejected $mail) {
+        return $mail->hasTo('applicant@example.com')
+            && $mail->reason === 'Incomplete documents';
     });
+
+    $this->assertDatabaseMissing('users', ['id' => $residentUser->id]);
+    $this->assertDatabaseMissing('residents', ['id' => $resident->id]);
 });
 
 /*

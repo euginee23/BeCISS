@@ -16,7 +16,10 @@ test('registration screen redirects to home', function () {
 
 test('new users can register', function () {
     $response = $this->post(route('register.store'), [
-        'name' => 'John Doe',
+        'first_name' => 'John',
+        'middle_name' => 'Reyes',
+        'last_name' => 'Doe',
+        'suffix' => 'Jr.',
         'email' => 'test@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
@@ -26,4 +29,13 @@ test('new users can register', function () {
         ->assertRedirect(route('dashboard', absolute: false));
 
     $this->assertAuthenticated();
+
+    $this->assertDatabaseHas('users', [
+        'email' => 'test@example.com',
+        'first_name' => 'John',
+        'middle_name' => 'Reyes',
+        'last_name' => 'Doe',
+        'suffix' => 'Jr.',
+        'name' => 'John Reyes Doe Jr.',
+    ]);
 });

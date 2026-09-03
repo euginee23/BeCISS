@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Concerns\CapitalizesWords;
 use Database\Factories\ResidentFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +15,25 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Resident extends Model
 {
     /** @use HasFactory<ResidentFactory> */
-    use HasFactory, SoftDeletes;
+    use CapitalizesWords, HasFactory, SoftDeletes;
+
+    /**
+     * The selectable puroks. Stored verbatim, so the label is the value.
+     *
+     * @var list<string>
+     */
+    public const array PUROKS = [
+        'Purok 1',
+        'Purok 2',
+        'Purok 3',
+        'Purok 4',
+        'Purok 5',
+        'Purok 6',
+        'Purok 7',
+        'Purok 8',
+        'Purok 9',
+        'Purok 10',
+    ];
 
     /**
      * The attributes that are mass assignable.
@@ -30,9 +50,10 @@ class Resident extends Model
         'gender',
         'civil_status',
         'contact_number',
-        'address',
+        'house_number',
+        'street',
         'purok',
-        'years_of_residency',
+        'residency_start_date',
         'occupation',
         'monthly_income',
         'is_voter',
@@ -54,9 +75,34 @@ class Resident extends Model
             'birthdate' => 'date',
             'monthly_income' => 'decimal:2',
             'is_voter' => 'boolean',
-            'years_of_residency' => 'integer',
+            'residency_start_date' => 'date',
             'approved_at' => 'datetime',
         ];
+    }
+
+    protected function firstName(): Attribute
+    {
+        return Attribute::set(fn (?string $value): ?string => self::capitalizeWords($value));
+    }
+
+    protected function middleName(): Attribute
+    {
+        return Attribute::set(fn (?string $value): ?string => self::capitalizeWords($value));
+    }
+
+    protected function lastName(): Attribute
+    {
+        return Attribute::set(fn (?string $value): ?string => self::capitalizeWords($value));
+    }
+
+    protected function street(): Attribute
+    {
+        return Attribute::set(fn (?string $value): ?string => self::capitalizeWords($value));
+    }
+
+    protected function occupation(): Attribute
+    {
+        return Attribute::set(fn (?string $value): ?string => self::capitalizeWords($value));
     }
 
     /**
@@ -72,6 +118,44 @@ class Resident extends Model
         ]);
 
         return implode(' ', $parts);
+    }
+
+    /**
+     * Get the resident's composed address.
+     *
+     * The `address` column was replaced by structured parts; this accessor keeps
+     * every existing `$resident->address` render site working unchanged.
+     */
+    public function getAddressAttribute(): string
+    {
+        return collect([$this->house_number, $this->street, $this->purok])
+            ->filter()
+            ->implode(', ');
+    }
+
+    /**
+     * Get the purok number without its "Purok " prefix.
+     *
+     * The blotter DOCX template hard-codes "Purok ${purok_name}", so the
+     * placeholder must receive the bare number.
+     */
+    public function getPurokNumberAttribute(): ?string
+    {
+        if (! $this->purok) {
+            return null;
+        }
+
+        return trim(str_ireplace('Purok', '', $this->purok)) ?: null;
+    }
+
+    /**
+     * Derive how many whole years the resident has lived in the barangay.
+     *
+     * Derived rather than stored so the figure stays correct as time passes.
+     */
+    public function getYearsOfResidencyAttribute(): ?int
+    {
+        return $this->residency_start_date?->diffInYears(now());
     }
 
     /**
@@ -137,9 +221,9 @@ class Resident extends Model
     /**
      * Calculate the resident's age.
      */
-    public function getAgeAttribute(): int
+    public function getAgeAttribute(): ?int
     {
-        return $this->birthdate->age;
+        return $this->birthdate?->age;
     }
 
     public function isPending(): bool
