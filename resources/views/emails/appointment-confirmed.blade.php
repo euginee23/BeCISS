@@ -89,10 +89,6 @@
                         <span class="detail-value">{{ $appointment->appointment_time->format('g:i A') }}</span>
                     </div>
                     <div class="detail-row">
-                        <span class="detail-label">Duration</span>
-                        <span class="detail-value">{{ $appointment->duration_minutes }} minutes</span>
-                    </div>
-                    <div class="detail-row">
                         <span class="detail-label">Status</span>
                         <span class="detail-value"><span class="status-badge">Confirmed</span></span>
                     </div>

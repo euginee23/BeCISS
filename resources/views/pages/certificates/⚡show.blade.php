@@ -2,6 +2,7 @@
 
 use App\Mail\CertificateReadyForPickup;
 use App\Mail\CertificateRejected;
+use App\Models\ActivityLog;
 use App\Models\Certificate;
 use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\Auth;
@@ -44,6 +45,7 @@ class extends Component {
         ]);
 
         $this->certificate->refresh();
+        $this->log('processing', 'Started processing');
 
         $user = $this->certificate->resident?->user;
         $user?->notify(new ResidentNotification(
@@ -61,6 +63,7 @@ class extends Component {
         ]);
 
         $this->certificate->refresh();
+        $this->log('ready', 'Marked ready for pickup');
         $this->notifyResident(CertificateReadyForPickup::class);
         $this->notifyResidentDatabase(
             type: 'certificate_ready',
@@ -89,6 +92,12 @@ class extends Component {
 
         $this->showCompleteModal = false;
         $this->certificate->refresh();
+        $this->log('completed', 'Released and completed');
+        $this->log(
+            'paid',
+            'Recorded payment of ₱'.number_format((float) $this->certificate->fee, 2).' under OR '.$this->certificate->or_number,
+            ['or_number' => $this->certificate->or_number, 'fee' => (float) $this->certificate->fee],
+        );
 
         $user = $this->certificate->resident?->user;
         $user?->notify(new ResidentNotification(
@@ -118,11 +127,26 @@ class extends Component {
 
         $this->showRejectModal = false;
         $this->certificate->refresh();
+        $this->log('rejected', 'Rejected. Reason: '.$this->certificate->rejection_reason, ['reason' => $this->certificate->rejection_reason]);
         $this->notifyResident(CertificateRejected::class);
         $this->notifyResidentDatabase(
             type: 'certificate_rejected',
             title: 'Certificate Request Rejected',
             body: 'Your ' . $this->certificate->type_label . ' (' . $this->certificate->certificate_number . ') was rejected. Reason: ' . $this->rejectionReason,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $properties
+     */
+    private function log(string $action, string $summary, ?array $properties = null): void
+    {
+        ActivityLog::record(
+            module: 'certificates',
+            action: $action,
+            subject: $this->certificate,
+            description: $summary.' — '.$this->certificate->type_label.' ('.$this->certificate->certificate_number.').',
+            properties: $properties,
         );
     }
 

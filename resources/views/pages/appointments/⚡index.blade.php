@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Appointment;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -23,8 +24,11 @@ class extends Component {
     #[Url]
     public string $date = '';
 
+    /**
+     * Default to booking order: whoever booked first is dealt with first.
+     */
     #[Url]
-    public string $sortBy = 'appointment_date';
+    public string $sortBy = 'created_at';
 
     #[Url]
     public string $sortDirection = 'asc';
@@ -59,11 +63,25 @@ class extends Component {
     public function cancelAppointment(): void
     {
         if ($this->appointmentToCancel) {
-            Appointment::find($this->appointmentToCancel)?->update([
-                'status' => 'cancelled',
-                'cancelled_at' => now(),
-                'cancellation_reason' => $this->cancellationReason,
-            ]);
+            $appointment = Appointment::find($this->appointmentToCancel);
+
+            if ($appointment) {
+                $appointment->update([
+                    'status' => 'cancelled',
+                    'cancelled_at' => now(),
+                    'handled_by' => auth()->id(),
+                    'cancellation_reason' => $this->cancellationReason,
+                ]);
+
+                ActivityLog::record(
+                    module: 'appointments',
+                    action: 'cancelled',
+                    subject: $appointment,
+                    description: 'Cancelled '.$appointment->service_type_label.' ('.$appointment->reference_number.').',
+                    properties: ['reason' => $this->cancellationReason],
+                );
+            }
+
             $this->showCancelModal = false;
             $this->appointmentToCancel = null;
             $this->cancellationReason = '';

@@ -45,6 +45,9 @@
                         {{ __('Blotters') }}
                     </flux:sidebar.item>
                     @endif
+                    <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
+                        {{ __('Reports') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
                 @endif
 
@@ -58,6 +61,9 @@
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="banknotes" :href="route('admin.settings.service-fees')" :current="request()->routeIs('admin.settings.service-fees')" wire:navigate>
                         {{ __('Service Fees') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="clipboard-document-list" :href="route('admin.activity-logs')" :current="request()->routeIs('admin.activity-logs')" wire:navigate>
+                        {{ __('Activity Logs') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
                 @endif

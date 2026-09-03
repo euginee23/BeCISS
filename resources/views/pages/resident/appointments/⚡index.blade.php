@@ -143,7 +143,7 @@ class extends Component
                                     </span>
                                     <span class="flex items-center gap-1.5">
                                         <flux:icon name="clock" class="size-4 text-zinc-400" />
-                                        {{ $appt->appointment_time->format('h:i A') }} ({{ $appt->duration_minutes }} min)
+                                        {{ $appt->appointment_time->format('h:i A') }}
                                     </span>
                                     <span class="flex items-center gap-1.5 font-mono text-xs text-zinc-400">
                                         Ref: {{ $appt->reference_number }}

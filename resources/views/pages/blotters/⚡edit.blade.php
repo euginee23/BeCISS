@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Blotter;
 use App\Models\Resident;
 use App\Models\ServiceFee;
@@ -87,6 +88,13 @@ class extends Component
             'remarks' => $this->remarks ?: null,
             'or_number' => $this->or_number ?: null,
         ]);
+
+        ActivityLog::record(
+            module: 'blotters',
+            action: 'updated',
+            subject: $this->blotter,
+            description: 'Updated blotter report '.$this->blotter->blotter_number.'.',
+        );
 
         session()->flash('status', __('Blotter report updated successfully.'));
 

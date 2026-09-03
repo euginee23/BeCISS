@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Blotter;
 use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\Auth;
@@ -37,6 +38,7 @@ class extends Component {
         ]);
 
         $this->blotter->refresh();
+        $this->log('processing', 'Started processing');
 
         $user = $this->blotter->resident?->user;
         $user?->notify(new ResidentNotification(
@@ -54,6 +56,7 @@ class extends Component {
         ]);
 
         $this->blotter->refresh();
+        $this->log('ready', 'Marked ready for pickup');
 
         $user = $this->blotter->resident?->user;
         $user?->notify(new ResidentNotification(
@@ -84,6 +87,12 @@ class extends Component {
 
         $this->showCompleteModal = false;
         $this->blotter->refresh();
+        $this->log('completed', 'Released and completed');
+        $this->log(
+            'paid',
+            'Recorded payment of ₱'.number_format((float) $this->blotter->fee, 2).' under OR '.$this->blotter->or_number,
+            ['or_number' => $this->blotter->or_number, 'fee' => (float) $this->blotter->fee],
+        );
 
         $user = $this->blotter->resident?->user;
         $user?->notify(new ResidentNotification(
@@ -113,6 +122,7 @@ class extends Component {
 
         $this->showRejectModal = false;
         $this->blotter->refresh();
+        $this->log('rejected', 'Rejected. Reason: '.$this->blotter->rejection_reason, ['reason' => $this->blotter->rejection_reason]);
 
         $user = $this->blotter->resident?->user;
         $user?->notify(new ResidentNotification(
@@ -121,6 +131,20 @@ class extends Component {
             body: 'Your blotter report (' . $this->blotter->blotter_number . ') was rejected. Reason: ' . $this->rejectionReason,
             url: route('resident.blotters.index'),
         ));
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $properties
+     */
+    private function log(string $action, string $summary, ?array $properties = null): void
+    {
+        ActivityLog::record(
+            module: 'blotters',
+            action: $action,
+            subject: $this->blotter,
+            description: $summary.' — blotter '.$this->blotter->blotter_number.'.',
+            properties: $properties,
+        );
     }
 
     public function openExportModal(): void

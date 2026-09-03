@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Certificate;
 use App\Models\Resident;
 use App\Models\ServiceFee;
@@ -44,7 +45,7 @@ class extends Component
     {
         $this->validate();
 
-        Certificate::create([
+        $certificate = Certificate::create([
             'resident_id' => $this->resident_id,
             'certificate_number' => Certificate::generateCertificateNumber(),
             'type' => $this->type,
@@ -53,6 +54,13 @@ class extends Component
             'remarks' => $this->remarks ?: null,
             'fee' => ServiceFee::getFee($this->type),
         ]);
+
+        ActivityLog::record(
+            module: 'certificates',
+            action: 'created',
+            subject: $certificate,
+            description: 'Created '.$certificate->type_label.' request ('.$certificate->certificate_number.').',
+        );
 
         session()->flash('status', __('Certificate request created successfully.'));
 

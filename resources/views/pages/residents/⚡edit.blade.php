@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Resident;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -82,6 +83,13 @@ class extends Component {
         $validated = $this->validate();
 
         $this->resident->update($validated);
+
+        ActivityLog::record(
+            module: 'residents',
+            action: 'updated',
+            subject: $this->resident,
+            description: 'Updated resident '.$this->resident->full_name.'.',
+        );
 
         session()->flash('status', __('Resident updated successfully.'));
 

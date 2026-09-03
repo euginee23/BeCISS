@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\CapitalizesWords;
+use App\Concerns\HasActivityLogs;
 use Database\Factories\ResidentFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Resident extends Model
 {
     /** @use HasFactory<ResidentFactory> */
-    use CapitalizesWords, HasFactory, SoftDeletes;
+    use CapitalizesWords, HasActivityLogs, HasFactory, SoftDeletes;
 
     /**
      * The selectable puroks. Stored verbatim, so the label is the value.

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Resident;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -58,7 +59,14 @@ class extends Component {
     {
         $validated = $this->validate();
 
-        Resident::create($validated);
+        $resident = Resident::create($validated);
+
+        ActivityLog::record(
+            module: 'residents',
+            action: 'created',
+            subject: $resident,
+            description: 'Created resident '.$resident->full_name.'.',
+        );
 
         session()->flash('status', __('Resident created successfully.'));
 

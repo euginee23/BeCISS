@@ -53,6 +53,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Blotter Download (all authenticated roles)
         Route::get('blotters/{blotter}/download', BlotterDownloadController::class)->name('blotters.download');
 
+        // Notifications for every role. The resident-only alias below is kept so
+        // existing links to `resident.notifications` keep resolving.
+        Route::livewire('notifications', 'pages::resident.notifications')->name('notifications');
+
         // Admin-only routes
         Route::middleware(['role:admin'])->group(function () {
             Route::livewire('admin/settings', 'pages::admin.settings.barangay')->name('admin.settings.barangay');
@@ -62,6 +66,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('staff', 'pages::staff.index')->name('staff.index');
             Route::livewire('staff/create', 'pages::staff.create')->name('staff.create');
             Route::livewire('staff/{user}/edit', 'pages::staff.edit')->name('staff.edit');
+
+            Route::livewire('admin/activity-logs', 'pages::admin.activity-logs')->name('admin.activity-logs');
         });
 
         // Resident-only routes
@@ -77,6 +83,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Management Routes (admin and staff only)
         Route::middleware(['role:admin,staff'])->group(function () {
+            // Reports span every module, so they sit outside the per-resource permissions.
+            Route::livewire('reports', 'pages::reports.index')->name('reports.index');
+
             // Residents Management
             Route::middleware(['permission:residents'])->group(function () {
                 Route::livewire('residents', 'pages::residents.index')->name('residents.index');

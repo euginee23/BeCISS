@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Certificate;
 use App\Models\Resident;
 use App\Models\ServiceFee;
@@ -65,6 +66,13 @@ class extends Component
             'remarks' => $this->remarks ?: null,
             'fee' => ServiceFee::getFee($this->type),
         ]);
+
+        ActivityLog::record(
+            module: 'certificates',
+            action: 'updated',
+            subject: $this->certificate,
+            description: 'Updated '.$this->certificate->type_label.' request ('.$this->certificate->certificate_number.').',
+        );
 
         session()->flash('status', __('Certificate request updated successfully.'));
 

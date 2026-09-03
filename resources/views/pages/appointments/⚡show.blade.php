@@ -3,6 +3,7 @@
 use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentCompleted;
 use App\Mail\AppointmentConfirmed;
+use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\Auth;
@@ -39,6 +40,7 @@ class extends Component
         ]);
 
         $this->appointment->refresh();
+        $this->log('confirmed', 'Confirmed the appointment');
         $this->notifyResident(AppointmentConfirmed::class);
         $this->notifyResidentDatabase(
             type: 'appointment_confirmed',
@@ -62,11 +64,13 @@ class extends Component
         $this->appointment->update([
             'status' => 'completed',
             'completed_at' => now(),
+            'handled_by' => Auth::id(),
             'notes' => $notes,
         ]);
 
         $this->showCompleteModal = false;
         $this->appointment->refresh();
+        $this->log('completed', 'Completed the appointment');
         $this->notifyResident(AppointmentCompleted::class);
         $this->notifyResidentDatabase(
             type: 'appointment_completed',
@@ -79,9 +83,11 @@ class extends Component
     {
         $this->appointment->update([
             'status' => 'no_show',
+            'handled_by' => Auth::id(),
         ]);
 
         $this->appointment->refresh();
+        $this->log('no_show', 'Marked as a no-show');
         $this->notifyResidentDatabase(
             type: 'appointment_no_show',
             title: 'Appointment Missed',
@@ -99,16 +105,32 @@ class extends Component
         $this->appointment->update([
             'status' => 'cancelled',
             'cancelled_at' => now(),
+            'handled_by' => Auth::id(),
             'cancellation_reason' => $this->cancellationReason,
         ]);
 
         $this->showCancelModal = false;
         $this->appointment->refresh();
+        $this->log('cancelled', 'Cancelled. Reason: '.$this->cancellationReason, ['reason' => $this->cancellationReason]);
         $this->notifyResident(AppointmentCancelled::class);
         $this->notifyResidentDatabase(
             type: 'appointment_cancelled',
             title: 'Appointment Cancelled',
             body: 'Your appointment for '.$this->appointment->service_type_label.' ('.$this->appointment->reference_number.') has been cancelled. Reason: '.$this->cancellationReason,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $properties
+     */
+    private function log(string $action, string $summary, ?array $properties = null): void
+    {
+        ActivityLog::record(
+            module: 'appointments',
+            action: $action,
+            subject: $this->appointment,
+            description: $summary.' — '.$this->appointment->service_type_label.' ('.$this->appointment->reference_number.').',
+            properties: $properties,
         );
     }
 
@@ -197,10 +219,6 @@ class extends Component
             </div>
 
             <dl class="space-y-3">
-                <div class="flex justify-between">
-                    <dt class="text-zinc-500">{{ __('Duration') }}</dt>
-                    <dd class="font-medium">{{ $appointment->duration_minutes }} {{ __('minutes') }}</dd>
-                </div>
                 <div class="flex justify-between">
                     <dt class="text-zinc-500">{{ __('Service Type') }}</dt>
                     <dd class="font-medium">{{ $appointment->service_type_label }}</dd>

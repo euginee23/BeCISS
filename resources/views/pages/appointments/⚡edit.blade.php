@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Models\Resident;
 use Livewire\Attributes\Computed;
@@ -18,7 +19,6 @@ class extends Component {
     public string $description = '';
     public string $appointment_date = '';
     public string $appointment_time = '';
-    public int $duration_minutes = 30;
     public string $notes = '';
 
     public function mount(Appointment $appointment): void
@@ -29,8 +29,18 @@ class extends Component {
         $this->description = $appointment->description;
         $this->appointment_date = $appointment->appointment_date->format('Y-m-d');
         $this->appointment_time = $appointment->appointment_time->format('H:i');
-        $this->duration_minutes = $appointment->duration_minutes;
         $this->notes = $appointment->notes ?? '';
+    }
+
+    /**
+     * The booking cap for this form.
+     *
+     * An appointment already booked beyond the window must stay editable, so the
+     * cap never falls before the date already on the record.
+     */
+    public function maxDate(): string
+    {
+        return max(Appointment::maxBookingDate(), $this->appointment->appointment_date->toDateString());
     }
 
     /**
@@ -44,9 +54,8 @@ class extends Component {
             'resident_id' => ['required', 'exists:residents,id'],
             'service_type' => ['required', 'in:' . implode(',', array_keys(Appointment::SERVICE_TYPES))],
             'description' => ['required', 'string', 'max:1000'],
-            'appointment_date' => ['required', 'date'],
+            'appointment_date' => ['required', 'date', 'before_or_equal:'.$this->maxDate()],
             'appointment_time' => ['required', 'date_format:H:i'],
-            'duration_minutes' => ['required', 'integer', 'min:15', 'max:120'],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
     }
@@ -56,6 +65,13 @@ class extends Component {
         $validated = $this->validate();
 
         $this->appointment->update($validated);
+
+        ActivityLog::record(
+            module: 'appointments',
+            action: 'updated',
+            subject: $this->appointment,
+            description: 'Updated '.$this->appointment->service_type_label.' ('.$this->appointment->reference_number.').',
+        );
 
         session()->flash('status', __('Appointment updated successfully.'));
 
@@ -71,16 +87,13 @@ class extends Component {
             ->get();
     }
 
+    /**
+     * @return list<string>
+     */
     #[Computed]
     public function timeSlots(): array
     {
-        $slots = [];
-        for ($hour = 8; $hour < 17; $hour++) {
-            $slots[] = sprintf('%02d:00', $hour);
-            $slots[] = sprintf('%02d:30', $hour);
-        }
-
-        return $slots;
+        return Appointment::timeSlots();
     }
 }; ?>
 
@@ -129,19 +142,6 @@ class extends Component {
                     <flux:error name="service_type" />
                 </flux:field>
 
-                <flux:field>
-                    <flux:label>{{ __('Duration') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:select wire:model="duration_minutes" required>
-                        <option value="15">15 {{ __('minutes') }}</option>
-                        <option value="30">30 {{ __('minutes') }}</option>
-                        <option value="45">45 {{ __('minutes') }}</option>
-                        <option value="60">1 {{ __('hour') }}</option>
-                        <option value="90">1.5 {{ __('hours') }}</option>
-                        <option value="120">2 {{ __('hours') }}</option>
-                    </flux:select>
-                    <flux:error name="duration_minutes" />
-                </flux:field>
-
                 <flux:field class="sm:col-span-2">
                     <flux:label>{{ __('Description') }} <span class="text-red-500">*</span></flux:label>
                     <flux:textarea wire:model="description" rows="3" required placeholder="{{ __('Describe the purpose of the appointment') }}" />
@@ -157,7 +157,7 @@ class extends Component {
             <div class="grid gap-4 sm:grid-cols-2">
                 <flux:field>
                     <flux:label>{{ __('Date') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:input wire:model="appointment_date" type="date" required />
+                    <flux:input wire:model="appointment_date" type="date" required max="{{ $this->maxDate() }}" />
                     <flux:error name="appointment_date" />
                 </flux:field>
 

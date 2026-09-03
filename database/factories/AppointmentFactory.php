@@ -25,9 +25,8 @@ class AppointmentFactory extends Factory
             'reference_number' => Appointment::generateReferenceNumber(),
             'service_type' => fake()->randomElement($serviceTypes),
             'description' => fake()->sentence(10),
-            'appointment_date' => fake()->dateTimeBetween('now', '+2 weeks'),
+            'appointment_date' => fake()->dateTimeBetween('now', '+'.Appointment::MAX_ADVANCE_DAYS.' days'),
             'appointment_time' => fake()->time('H:i:00'),
-            'duration_minutes' => fake()->randomElement([15, 30, 45, 60]),
             'status' => 'scheduled',
             'notes' => fake()->optional(0.3)->sentence(),
         ];

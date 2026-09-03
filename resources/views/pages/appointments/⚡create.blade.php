@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Mail\AppointmentScheduled;
 use App\Models\Appointment;
 use App\Models\Resident;
@@ -25,7 +26,6 @@ class extends Component
 
     public string $appointment_time = '';
 
-    public int $duration_minutes = 30;
 
     public string $notes = '';
 
@@ -40,9 +40,8 @@ class extends Component
             'resident_id' => ['required', 'exists:residents,id'],
             'service_type' => ['required', 'in:'.implode(',', array_keys(Appointment::SERVICE_TYPES))],
             'description' => ['required', 'string', 'max:1000'],
-            'appointment_date' => ['required', 'date', 'after_or_equal:today'],
+            'appointment_date' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:'.Appointment::maxBookingDate()],
             'appointment_time' => ['required', 'date_format:H:i'],
-            'duration_minutes' => ['required', 'integer', 'min:15', 'max:120'],
             'notes' => ['nullable', 'string', 'max:500'],
         ];
     }
@@ -68,6 +67,13 @@ class extends Component
             ));
         }
 
+        ActivityLog::record(
+            module: 'appointments',
+            action: 'created',
+            subject: $appointment,
+            description: 'Scheduled '.$appointment->service_type_label.' ('.$appointment->reference_number.').',
+        );
+
         session()->flash('status', __('Appointment scheduled successfully.'));
 
         $this->redirect(route('appointments.index'), navigate: true);
@@ -82,16 +88,13 @@ class extends Component
             ->get();
     }
 
+    /**
+     * @return list<string>
+     */
     #[Computed]
     public function timeSlots(): array
     {
-        $slots = [];
-        for ($hour = 8; $hour < 17; $hour++) {
-            $slots[] = sprintf('%02d:00', $hour);
-            $slots[] = sprintf('%02d:30', $hour);
-        }
-
-        return $slots;
+        return Appointment::timeSlots();
     }
 }; ?>
 
@@ -140,19 +143,6 @@ class extends Component
                     <flux:error name="service_type" />
                 </flux:field>
 
-                <flux:field>
-                    <flux:label>{{ __('Duration') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:select wire:model="duration_minutes" required>
-                        <option value="15">15 {{ __('minutes') }}</option>
-                        <option value="30">30 {{ __('minutes') }}</option>
-                        <option value="45">45 {{ __('minutes') }}</option>
-                        <option value="60">1 {{ __('hour') }}</option>
-                        <option value="90">1.5 {{ __('hours') }}</option>
-                        <option value="120">2 {{ __('hours') }}</option>
-                    </flux:select>
-                    <flux:error name="duration_minutes" />
-                </flux:field>
-
                 <flux:field class="sm:col-span-2">
                     <flux:label>{{ __('Description') }} <span class="text-red-500">*</span></flux:label>
                     <flux:textarea wire:model="description" rows="3" required placeholder="{{ __('Describe the purpose of the appointment') }}" />
@@ -168,7 +158,8 @@ class extends Component
             <div class="grid gap-4 sm:grid-cols-2">
                 <flux:field>
                     <flux:label>{{ __('Date') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:input wire:model="appointment_date" type="date" required min="{{ now()->toDateString() }}" />
+                    <flux:input wire:model="appointment_date" type="date" required min="{{ now()->toDateString() }}" max="{{ \App\Models\Appointment::maxBookingDate() }}" />
+                    <flux:description>{{ __('Appointments can be booked up to :days days ahead.', ['days' => \App\Models\Appointment::MAX_ADVANCE_DAYS]) }}</flux:description>
                     <flux:error name="appointment_date" />
                 </flux:field>
 

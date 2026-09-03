@@ -2,6 +2,7 @@
 
 use App\Mail\RegistrationRejected;
 use App\Mail\ResidentApproved;
+use App\Models\ActivityLog;
 use App\Models\Resident;
 use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\DB;
@@ -80,6 +81,13 @@ class extends Component {
                 // hard delete and would take the resident's history with them. Removing
                 // the account frees the email address; the nullOnDelete foreign key
                 // clears user_id on the retained record.
+                ActivityLog::record(
+                    module: 'residents',
+                    action: 'deleted',
+                    subject: $resident,
+                    description: 'Deleted resident '.$resident->full_name.'.',
+                );
+
                 $resident->delete();
                 $user?->delete();
             }
@@ -97,6 +105,13 @@ class extends Component {
             'approved_at' => now(),
             'rejection_reason' => null,
         ]);
+
+        ActivityLog::record(
+            module: 'residents',
+            action: 'approved',
+            subject: $resident,
+            description: 'Approved the registration of '.$resident->full_name.'.',
+        );
 
         Mail::to($resident->user)->send(new ResidentApproved($resident->user, $resident));
 
@@ -136,6 +151,16 @@ class extends Component {
             if ($user) {
                 Mail::to($user->email)->send(new RegistrationRejected($resident->full_name, $reason));
             }
+
+            // Logged before the delete: the subject is about to disappear, so the
+            // description carries the record.
+            ActivityLog::record(
+                module: 'residents',
+                action: 'rejected',
+                subject: $resident,
+                description: 'Rejected the registration of '.$resident->full_name.' ('.($user?->email ?? 'no account').'). Reason: '.$reason,
+                properties: ['reason' => $reason, 'email' => $user?->email],
+            );
 
             DB::transaction(function () use ($resident, $user): void {
                 $resident->forceDelete();

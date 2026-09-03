@@ -47,7 +47,6 @@ describe('appointment booking', function () {
             ->set('description', 'Need to pick up my clearance')
             ->set('appointment_date', now()->addDays(3)->toDateString())
             ->set('appointment_time', '09:00')
-            ->set('duration_minutes', 30)
             ->call('save')
             ->assertRedirect(route('resident.appointments.index'));
 
@@ -56,7 +55,6 @@ describe('appointment booking', function () {
             'service_type' => 'certificate_request',
             'description' => 'Need to pick up my clearance',
             'status' => 'scheduled',
-            'duration_minutes' => 30,
         ]);
     });
 
@@ -69,7 +67,6 @@ describe('appointment booking', function () {
             ->set('description', 'General inquiry')
             ->set('appointment_date', now()->addDays(1)->toDateString())
             ->set('appointment_time', '10:00')
-            ->set('duration_minutes', 15)
             ->call('save');
 
         $appointment = Appointment::where('resident_id', $resident->id)->first();
@@ -83,7 +80,6 @@ describe('appointment booking', function () {
             ->set('description', 'Noise complaint')
             ->set('appointment_date', now()->addDays(2)->toDateString())
             ->set('appointment_time', '14:00')
-            ->set('duration_minutes', 45)
             ->set('notes', 'Please prepare mediation room')
             ->call('save');
 
@@ -112,7 +108,6 @@ describe('validation', function () {
             ->set('description', 'Test')
             ->set('appointment_date', now()->subDay()->toDateString())
             ->set('appointment_time', '09:00')
-            ->set('duration_minutes', 30)
             ->call('save')
             ->assertHasErrors(['appointment_date']);
     });

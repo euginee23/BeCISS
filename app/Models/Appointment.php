@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasActivityLogs;
 use Database\Factories\AppointmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Appointment extends Model
 {
     /** @use HasFactory<AppointmentFactory> */
-    use HasFactory;
+    use HasActivityLogs, HasFactory;
 
     /**
      * Service types.
@@ -20,12 +21,16 @@ class Appointment extends Model
         'complaint' => 'Complaint/Blotter',
         'mediation' => 'Mediation/Settlement',
         'business_permit' => 'Business Permit',
-        'building_permit' => 'Building Permit',
         'health_services' => 'Health Services',
         'legal_assistance' => 'Legal Assistance',
         'consultation' => 'Consultation',
         'other' => 'Other',
     ];
+
+    /**
+     * How far ahead an appointment may be booked.
+     */
+    public const int MAX_ADVANCE_DAYS = 7;
 
     /**
      * Appointment statuses.
@@ -51,7 +56,6 @@ class Appointment extends Model
         'description',
         'appointment_date',
         'appointment_time',
-        'duration_minutes',
         'status',
         'notes',
         'cancellation_reason',
@@ -69,10 +73,34 @@ class Appointment extends Model
         return [
             'appointment_date' => 'date',
             'appointment_time' => 'datetime:H:i',
-            'duration_minutes' => 'integer',
             'cancelled_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * The latest date an appointment may currently be booked for.
+     */
+    public static function maxBookingDate(): string
+    {
+        return now()->addDays(self::MAX_ADVANCE_DAYS)->toDateString();
+    }
+
+    /**
+     * The bookable half-hour slots, 08:00 through 16:30.
+     *
+     * @return list<string>
+     */
+    public static function timeSlots(): array
+    {
+        $slots = [];
+
+        for ($hour = 8; $hour < 17; $hour++) {
+            $slots[] = sprintf('%02d:00', $hour);
+            $slots[] = sprintf('%02d:30', $hour);
+        }
+
+        return $slots;
     }
 
     /**

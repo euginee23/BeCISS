@@ -7,6 +7,7 @@ use App\Mail\AppointmentScheduled;
 use App\Models\Appointment;
 use App\Models\Resident;
 use App\Models\User;
+use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -26,11 +27,10 @@ test('admin scheduling an appointment sends email and notification to resident',
         ->set('description', 'Test appointment')
         ->set('appointment_date', now()->addDays(3)->toDateString())
         ->set('appointment_time', '10:00')
-        ->set('duration_minutes', 30)
         ->call('save');
 
     Mail::assertSent(AppointmentScheduled::class, fn ($mail) => $mail->hasTo($residentUser->email));
-    Notification::assertSentTo($residentUser, \App\Notifications\ResidentNotification::class);
+    Notification::assertSentTo($residentUser, ResidentNotification::class);
 });
 
 test('confirming an appointment sends confirmation email', function () {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasActivityLogs;
 use Database\Factories\CertificateFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Certificate extends Model
 {
     /** @use HasFactory<CertificateFactory> */
-    use HasFactory;
+    use HasActivityLogs, HasFactory;
 
     /**
      * Certificate types.

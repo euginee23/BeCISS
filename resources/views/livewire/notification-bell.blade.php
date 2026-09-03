@@ -75,27 +75,14 @@ new class extends Component {
                 @php
                     $data = $notification->data;
                     $isUnread = is_null($notification->read_at);
-                    $iconMap = [
-                        'registration_approved'   => ['icon' => 'check-circle',    'color' => 'text-emerald-500'],
-                        'registration_rejected'   => ['icon' => 'x-circle',        'color' => 'text-red-500'],
-                        'certificate_processing'  => ['icon' => 'cog-6-tooth',     'color' => 'text-blue-500'],
-                        'certificate_ready'       => ['icon' => 'document-check',  'color' => 'text-emerald-500'],
-                        'certificate_completed'   => ['icon' => 'check-badge',     'color' => 'text-green-600'],
-                        'certificate_rejected'    => ['icon' => 'x-circle',        'color' => 'text-red-500'],
-                        'appointment_booked'      => ['icon' => 'calendar',        'color' => 'text-blue-500'],
-                        'appointment_confirmed'   => ['icon' => 'calendar-days',   'color' => 'text-emerald-500'],
-                        'appointment_completed'   => ['icon' => 'check-circle',    'color' => 'text-green-600'],
-                        'appointment_cancelled'   => ['icon' => 'x-circle',        'color' => 'text-red-500'],
-                        'appointment_no_show'     => ['icon' => 'no-symbol',       'color' => 'text-amber-500'],
-                    ];
-                    $icon = $iconMap[$data['type']] ?? ['icon' => 'bell', 'color' => 'text-zinc-400'];
+                    $icon = \App\Notifications\ResidentNotification::iconFor($data['type'] ?? null);
                 @endphp
 
                 <div
                     wire:click="markRead('{{ $notification->id }}')"
                     class="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors {{ $isUnread ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : '' }}"
-                    @if ($data['url'])
-                        onclick="window.location.href='{{ $data['url'] }}'"
+                    @if (! empty($data['url']))
+                        onclick="window.location.href={{ \Illuminate\Support\Js::from($data['url']) }}"
                     @endif
                 >
                     <div class="mt-0.5 shrink-0 flex items-center justify-center size-8 rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -130,7 +117,7 @@ new class extends Component {
         @if ($this->notifications->isNotEmpty())
             <div class="border-t border-zinc-100 dark:border-zinc-800 px-4 py-2.5 text-center">
                 <a
-                    href="{{ route('resident.notifications') }}"
+                    href="{{ route('notifications') }}"
                     wire:navigate
                     class="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline"
                     @click="open = false"

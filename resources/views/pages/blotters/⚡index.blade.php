@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Blotter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -67,7 +68,19 @@ class extends Component {
     public function deleteBlotter(): void
     {
         if ($this->blotterToDelete) {
-            Blotter::find($this->blotterToDelete)?->delete();
+            $blotter = Blotter::find($this->blotterToDelete);
+
+            if ($blotter) {
+                ActivityLog::record(
+                    module: 'blotters',
+                    action: 'deleted',
+                    subject: $blotter,
+                    description: 'Deleted blotter report '.$blotter->blotter_number.'.',
+                );
+
+                $blotter->delete();
+            }
+
             $this->showDeleteModal = false;
             $this->blotterToDelete = null;
         }

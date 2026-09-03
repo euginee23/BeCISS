@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Blotter;
 use App\Models\Resident;
 use App\Models\ServiceFee;
@@ -57,7 +58,7 @@ class extends Component
     {
         $this->validate();
 
-        Blotter::create([
+        $blotter = Blotter::create([
             'resident_id' => $this->resident_id,
             'blotter_number' => Blotter::generateBlotterNumber(),
             'fee' => ServiceFee::getFee('blotter'),
@@ -71,6 +72,13 @@ class extends Component
             'remarks' => $this->remarks ?: null,
             'or_number' => $this->or_number ?: null,
         ]);
+
+        ActivityLog::record(
+            module: 'blotters',
+            action: 'created',
+            subject: $blotter,
+            description: 'Created blotter report '.$blotter->blotter_number.'.',
+        );
 
         session()->flash('status', __('Blotter report created successfully.'));
 

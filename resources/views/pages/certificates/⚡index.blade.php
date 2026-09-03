@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Certificate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -67,7 +68,19 @@ class extends Component {
     public function deleteCertificate(): void
     {
         if ($this->certificateToDelete) {
-            Certificate::find($this->certificateToDelete)?->delete();
+            $certificate = Certificate::find($this->certificateToDelete);
+
+            if ($certificate) {
+                ActivityLog::record(
+                    module: 'certificates',
+                    action: 'deleted',
+                    subject: $certificate,
+                    description: 'Deleted '.$certificate->type_label.' request ('.$certificate->certificate_number.').',
+                );
+
+                $certificate->delete();
+            }
+
             $this->showDeleteModal = false;
             $this->certificateToDelete = null;
         }

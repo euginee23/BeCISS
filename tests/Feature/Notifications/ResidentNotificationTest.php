@@ -170,3 +170,48 @@ test('mark all as read clears unread notifications', function () {
 
     expect($residentUser->fresh()->unreadNotifications()->count())->toBe(0);
 });
+
+/*
+|--------------------------------------------------------------------------
+| Notification presentation
+|--------------------------------------------------------------------------
+*/
+
+test('blotter notification types have their own icon', function () {
+    foreach (['blotter_processing', 'blotter_ready', 'blotter_completed', 'blotter_rejected'] as $type) {
+        expect(ResidentNotification::iconFor($type)['icon'])->not->toBe('bell');
+    }
+});
+
+test('an unknown notification type falls back to a bell', function () {
+    expect(ResidentNotification::iconFor('something_else')['icon'])->toBe('bell')
+        ->and(ResidentNotification::iconFor(null)['icon'])->toBe('bell');
+});
+
+test('the notifications page paginates past the first page', function () {
+    $user = User::factory()->resident()->create();
+    Resident::factory()->create(['user_id' => $user->id]);
+
+    for ($i = 0; $i < 18; $i++) {
+        $user->notify(new ResidentNotification(
+            type: 'certificate_ready',
+            title: 'Certificate '.$i,
+            body: 'Body '.$i,
+            url: null,
+        ));
+    }
+
+    Livewire::actingAs($user)
+        ->test('pages::resident.notifications')
+        ->assertOk();
+});
+
+test('staff can reach the shared notifications page', function () {
+    $this->actingAs(User::factory()->staff()->create())
+        ->get(route('notifications'))
+        ->assertOk();
+
+    $this->actingAs(User::factory()->admin()->create())
+        ->get(route('notifications'))
+        ->assertOk();
+});
