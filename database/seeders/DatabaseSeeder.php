@@ -47,5 +47,9 @@ class DatabaseSeeder extends Seeder
             'office_hours' => "Monday - Friday: 8:00 AM - 5:00 PM\nSaturday: 8:00 AM - 12:00 PM",
         ]);
 
+        $this->call([
+            CertificateTypeSeeder::class,
+            ServiceFeeSeeder::class,
+        ]);
     }
 }

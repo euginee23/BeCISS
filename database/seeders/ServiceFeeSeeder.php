@@ -12,11 +12,11 @@ class ServiceFeeSeeder extends Seeder
      */
     public function run(): void
     {
+        /**
+         * Certificate fees moved to the certificate_types table, which admins
+         * manage directly. Only the blotter fee is still a service fee.
+         */
         $fees = [
-            ['service_type' => 'barangay_clearance', 'label' => 'Barangay Clearance', 'fee' => 50.00],
-            ['service_type' => 'barangay_certification', 'label' => 'Barangay Certification', 'fee' => 50.00],
-            ['service_type' => 'certificate_of_residency', 'label' => 'Certificate of Residency', 'fee' => 30.00],
-            ['service_type' => 'certificate_of_indigency', 'label' => 'Certificate of Indigency', 'fee' => 0.00],
             ['service_type' => 'blotter', 'label' => 'Blotter Report', 'fee' => 50.00],
         ];
 
