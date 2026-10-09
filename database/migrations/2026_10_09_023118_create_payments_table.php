@@ -17,7 +17,7 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table): void {
             $table->id();
             $table->morphs('payable');
-            $table->string('or_number', 50)->index();
+            $table->string('or_number')->index();
             $table->decimal('amount', 10, 2);
             $table->timestamp('paid_at')->index();
             $table->foreignId('received_by')->nullable()->constrained('users')->nullOnDelete();
@@ -55,7 +55,7 @@ return new class extends Migration
                     'payable_id' => $row->id,
                     'or_number' => $row->or_number,
                     'amount' => $row->fee,
-                    'paid_at' => $row->completed_at ?? $row->updated_at,
+                    'paid_at' => $row->completed_at ?? $row->updated_at ?? $row->created_at ?? now(),
                     'received_by' => $row->processed_by,
                     'payor_name' => $row->payor_name,
                     'created_at' => now(),

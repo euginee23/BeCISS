@@ -37,8 +37,31 @@ class extends Component {
 
     public function mount(): void
     {
-        $this->from = $this->from ?: now()->toDateString();
-        $this->to = $this->to ?: now()->toDateString();
+        $this->from = $this->validDate($this->from) ?? now()->toDateString();
+        $this->to = $this->validDate($this->to) ?? now()->toDateString();
+    }
+
+    /**
+     * Dates arrive from the URL and the date inputs, so anything that is not
+     * a real Y-m-d date is dropped rather than allowed to break the page.
+     */
+    private function validDate(?string $value): ?string
+    {
+        if (! $value || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) || ! checkdate((int) substr($value, 5, 2), (int) substr($value, 8, 2), (int) substr($value, 0, 4))) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    public function updatedFrom(): void
+    {
+        $this->from = $this->validDate($this->from) ?? now()->toDateString();
+    }
+
+    public function updatedTo(): void
+    {
+        $this->to = $this->validDate($this->to) ?? now()->toDateString();
     }
 
     public function setRange(string $range): void

@@ -73,31 +73,41 @@ class CertificateWorkflow
     }
 
     /**
-     * Record the fee and start processing.
+     * Record the fee. A request awaiting payment moves on to processing;
+     * one already further along (paid at release under the old flow) keeps
+     * its status so it can be completed.
      */
     public function recordPayment(Certificate $certificate, string $orNumber, User $cashier, ?string $remarks = null): Payment
     {
-        $this->ensureCan($certificate, 'processing');
-
-        if ($certificate->status !== 'awaiting_payment') {
-            throw ValidationException::withMessages(['status' => __('Only approved requests awaiting payment can be paid.')]);
-        }
-
-        if (Payment::orNumberTaken($orNumber)) {
-            throw ValidationException::withMessages(['orNumber' => __('This OR number has already been used.')]);
-        }
-
         $payment = DB::transaction(function () use ($certificate, $orNumber, $cashier, $remarks): Payment {
-            $payment = $certificate->recordPayment($orNumber, $cashier, $remarks);
+            /**
+             * Re-read under a row lock so a double submit or two cashiers at
+             * once cannot both record a payment.
+             */
+            $locked = Certificate::query()->lockForUpdate()->findOrFail($certificate->id);
 
-            $certificate->update([
-                'status' => 'processing',
-                'processed_by' => $cashier->id,
-                'processed_at' => now(),
-            ]);
+            if (! $locked->canTakePayment()) {
+                throw ValidationException::withMessages(['status' => __('This request has no payment due.')]);
+            }
+
+            if (Payment::orNumberTaken($orNumber)) {
+                throw ValidationException::withMessages(['orNumber' => __('This OR number has already been used.')]);
+            }
+
+            $payment = $locked->recordPayment($orNumber, $cashier, $remarks);
+
+            if ($locked->status === 'awaiting_payment') {
+                $locked->update([
+                    'status' => 'processing',
+                    'processed_by' => $cashier->id,
+                    'processed_at' => now(),
+                ]);
+            }
 
             return $payment;
         });
+
+        $certificate->refresh();
 
         $this->log(
             $certificate,
@@ -110,7 +120,8 @@ class CertificateWorkflow
             $certificate,
             type: 'certificate_paid',
             title: 'Payment Received',
-            body: 'We received ₱'.number_format((float) $payment->amount, 2).' (OR '.$orNumber.') for your '.$certificate->type_label.' ('.$certificate->certificate_number.'). It is now being processed.',
+            body: 'We received ₱'.number_format((float) $payment->amount, 2).' (OR '.$orNumber.') for your '.$certificate->type_label.' ('.$certificate->certificate_number.').'
+                .($certificate->status === 'processing' ? ' It is now being processed.' : ''),
         );
 
         return $payment;
@@ -296,6 +307,9 @@ class CertificateWorkflow
     }
 
     /**
+     * Email the resident. The status change is already saved, so a mail
+     * outage is logged instead of failing the staff member's action.
+     *
      * @param  class-string  $mailable
      */
     private function mailResident(Certificate $certificate, string $mailable): void
@@ -303,7 +317,7 @@ class CertificateWorkflow
         $user = $certificate->resident?->user;
 
         if ($user) {
-            Mail::to($user->email)->send(new $mailable($user, $certificate));
+            rescue(fn () => Mail::to($user->email)->send(new $mailable($user, $certificate)));
         }
     }
 

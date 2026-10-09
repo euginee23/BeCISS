@@ -63,7 +63,12 @@ class extends Component
             'is_active' => ['boolean'],
             'available_to_residents' => ['boolean'],
             'requires_ctc' => ['boolean'],
-            'template' => ['nullable', 'file', 'mimes:docx', 'max:5120'],
+            /**
+             * Checked by extension: some servers report .docx files as
+             * application/zip, which a MIME rule would wrongly reject. The
+             * file is opened in save() to prove it is a real Word document.
+             */
+            'template' => ['nullable', 'file', 'extensions:docx', 'max:5120'],
         ];
     }
 
@@ -96,6 +101,18 @@ class extends Component
     {
         $this->validate();
 
+        $placeholders = null;
+
+        if ($this->template) {
+            try {
+                $placeholders = $documents->placeholdersIn($this->template->getRealPath());
+            } catch (\Throwable) {
+                $this->addError('template', __('This file could not be opened as a Word document.'));
+
+                return;
+            }
+        }
+
         $type = $this->editingId
             ? CertificateType::findOrFail($this->editingId)
             : new CertificateType(['slug' => CertificateType::slugFor($this->name)]);
@@ -112,7 +129,7 @@ class extends Component
         ]);
 
         if ($this->template) {
-            $this->storeTemplate($type, $documents);
+            $this->storeTemplate($type, $placeholders);
         }
 
         $isNew = ! $type->exists;
@@ -209,7 +226,10 @@ class extends Component
         return CertificateDocumentService::PLACEHOLDERS;
     }
 
-    private function storeTemplate(CertificateType $type, CertificateDocumentService $documents): void
+    /**
+     * @param  list<string>  $placeholders
+     */
+    private function storeTemplate(CertificateType $type, array $placeholders): void
     {
         $path = $this->template->storeAs(
             'certificate-templates',
@@ -225,7 +245,7 @@ class extends Component
             'template_disk' => 'local',
             'template_path' => $path,
             'template_original_name' => $this->template->getClientOriginalName(),
-            'template_placeholders' => $documents->placeholdersIn(Storage::disk('local')->path($path)),
+            'template_placeholders' => $placeholders,
             'template_uploaded_at' => now(),
         ]);
     }

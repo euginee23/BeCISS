@@ -30,7 +30,13 @@ class CertificateDownloadController extends Controller
 
         $certificate->load('resident', 'certificateType');
 
-        $pdfPath = $service->generatePdf($certificate);
+        try {
+            $pdfPath = $service->generatePdf($certificate);
+        } catch (\RuntimeException $exception) {
+            report($exception);
+
+            abort(503, 'The certificate PDF could not be generated right now. Please try again or contact the administrator.');
+        }
 
         $typeLabel = str_replace(' ', '_', $certificate->type_label);
 

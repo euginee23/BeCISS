@@ -320,10 +320,10 @@ class extends Component
                     </div>
 
                     <div class="flex flex-wrap gap-2">
-                        @if ($certificate->status === 'awaiting_payment' && auth()->user()->hasPermission('payments'))
+                        @if ($certificate->canTakePayment() && auth()->user()->hasPermission('payments'))
                             <flux:button variant="primary" icon="banknotes" wire:click="openPaymentModal">{{ __('Record Payment') }}</flux:button>
                         @endif
-                        @if ($certificate->status === 'ready_for_pickup' && auth()->user()->hasPermission('certificates'))
+                        @if ($certificate->status === 'ready_for_pickup' && ! $certificate->requiresPayment() && auth()->user()->hasPermission('certificates'))
                             <flux:button variant="primary" icon="hand-raised" wire:click="releaseCertificate" wire:confirm="{{ __('Release the certificate and complete this visit?') }}">{{ __('Release Certificate') }}</flux:button>
                         @endif
                         @if (auth()->user()->hasPermission('certificates'))

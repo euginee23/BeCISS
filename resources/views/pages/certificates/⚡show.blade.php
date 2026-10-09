@@ -199,10 +199,12 @@ class extends Component {
                 <flux:button variant="primary" icon="check" wire:click="approve">
                     {{ $certificate->requiresPayment() ? __('Approve (Awaiting Payment)') : __('Approve & Process') }}
                 </flux:button>
-            @elseif ($certificate->status === 'awaiting_payment' && $this->canRecordPayment)
-                <flux:button variant="primary" icon="banknotes" wire:click="openPaymentModal">
-                    {{ __('Record Payment') }}
-                </flux:button>
+            @elseif ($certificate->canTakePayment())
+                @if ($this->canRecordPayment)
+                    <flux:button variant="primary" icon="banknotes" wire:click="openPaymentModal">
+                        {{ __('Record Payment') }}
+                    </flux:button>
+                @endif
             @elseif ($certificate->status === 'processing')
                 <flux:button variant="primary" icon="document-check" wire:click="openReadyModal">
                     {{ __('Mark Ready for Pickup') }}

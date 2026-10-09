@@ -253,6 +253,14 @@ class Certificate extends Model
     }
 
     /**
+     * Whether a cashier can record the fee now: approved, unpaid and still open.
+     */
+    public function canTakePayment(): bool
+    {
+        return in_array($this->status, self::VISIT_STATUSES, true) && $this->requiresPayment();
+    }
+
+    /**
      * Whether the certificate may be printed: paid (or free) and past approval.
      */
     public function isPrintable(): bool
@@ -276,7 +284,7 @@ class Certificate extends Model
                 return DB::transaction(fn (): self => static::create([
                     ...$attributes,
                     'certificate_number' => static::generateCertificateNumber(),
-                ]));
+                ]), attempts: 3);
             } catch (UniqueConstraintViolationException $exception) {
                 if (++$attempts >= 5) {
                     throw $exception;

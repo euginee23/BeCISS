@@ -7,12 +7,19 @@ use App\Models\Blotter;
 use App\Models\Certificate;
 use App\Models\CertificateType;
 use Carbon\Carbon;
+use Illuminate\Process\Exceptions\ProcessTimedOutException;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
 use PhpOffice\PhpWord\TemplateProcessor;
 
 class CertificateDocumentService
 {
+    /**
+     * Seconds to wait for LibreOffice before giving up on a conversion.
+     */
+    private const int CONVERSION_TIMEOUT = 60;
+
     /**
      * Template file mapping by certificate type.
      *
@@ -263,19 +270,32 @@ class CertificateDocumentService
          */
         $profileDir = sys_get_temp_dir().'/lo_profile_'.Str::uuid();
 
-        $command = sprintf(
-            'libreoffice %s --headless --convert-to pdf --outdir %s %s 2>&1',
-            escapeshellarg('-env:UserInstallation=file://'.$profileDir),
-            escapeshellarg($outputDir),
-            escapeshellarg($docxPath),
-        );
+        try {
+            /**
+             * HOME points at the private profile too: the web server user
+             * often has no writable home directory, which makes LibreOffice
+             * exit without converting.
+             */
+            $result = Process::timeout(self::CONVERSION_TIMEOUT)
+                ->env(['HOME' => $profileDir])
+                ->run([
+                    'libreoffice',
+                    '-env:UserInstallation=file://'.$profileDir,
+                    '--headless',
+                    '--convert-to',
+                    'pdf',
+                    '--outdir',
+                    $outputDir,
+                    $docxPath,
+                ]);
+        } catch (ProcessTimedOutException $exception) {
+            throw new \RuntimeException('PDF conversion timed out after '.self::CONVERSION_TIMEOUT.' seconds.', previous: $exception);
+        } finally {
+            File::deleteDirectory($profileDir);
+        }
 
-        exec($command, $output, $exitCode);
-
-        File::deleteDirectory($profileDir);
-
-        if ($exitCode !== 0) {
-            throw new \RuntimeException('PDF conversion failed. Ensure LibreOffice is installed. Output: '.implode("\n", $output));
+        if ($result->failed()) {
+            throw new \RuntimeException('PDF conversion failed. Ensure LibreOffice is installed. Output: '.$result->output().$result->errorOutput());
         }
 
         $pdfPath = preg_replace('/\.docx$/i', '.pdf', $docxPath);

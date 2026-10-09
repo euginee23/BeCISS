@@ -247,7 +247,7 @@ class Resident extends Model
      */
     public function getYearsOfResidencyAttribute(): ?int
     {
-        return $this->residency_start_date?->diffInYears(now());
+        return $this->residency_start_date ? (int) $this->residency_start_date->diffInYears(now()) : null;
     }
 
     /**
