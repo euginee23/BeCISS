@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ResidentDetailFields;
 use App\Models\ActivityLog;
 use App\Models\Resident;
 use Illuminate\Validation\Rule;
@@ -11,6 +12,8 @@ new
 #[Title('Add Resident')]
 #[Layout('layouts::app')]
 class extends Component {
+    use ResidentDetailFields;
+
     public string $first_name = '';
     public string $middle_name = '';
     public string $last_name = '';
@@ -19,6 +22,7 @@ class extends Component {
     public string $gender = '';
     public string $civil_status = '';
     public string $contact_number = '';
+    public string $email = '';
     public string $house_number = '';
     public string $street = '';
     public string $purok = '';
@@ -39,11 +43,12 @@ class extends Component {
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
-            'suffix' => ['nullable', 'string', 'max:50'],
+            'suffix' => ['nullable', 'string', 'max:10'],
             'birthdate' => ['required', 'date', 'before:today'],
             'gender' => ['required', Rule::in(['male', 'female'])],
-            'civil_status' => ['required', Rule::in(['single', 'married', 'widowed', 'separated'])],
-            'contact_number' => ['nullable', 'string', 'max:50'],
+            'civil_status' => $this->civilStatusRules(),
+            'contact_number' => ['nullable', 'string', 'max:20'],
+            'email' => ['nullable', 'email', 'max:255'],
             'house_number' => ['nullable', 'string', 'max:50'],
             'street' => ['required', 'string', 'max:255'],
             'purok' => ['required', Rule::in(Resident::PUROKS)],
@@ -52,6 +57,7 @@ class extends Component {
             'monthly_income' => ['nullable', 'numeric', 'min:0'],
             'is_voter' => ['boolean'],
             'household_head_id' => ['nullable', 'exists:residents,id'],
+            ...$this->residentDetailRules(),
         ];
     }
 
@@ -59,7 +65,17 @@ class extends Component {
     {
         $validated = $this->validate();
 
-        $resident = Resident::create($validated);
+        /**
+         * Staff-registered residents are verified in person, so they join the
+         * registry immediately instead of waiting in the approval queue.
+         */
+        $resident = Resident::create([
+            ...$validated,
+            ...$this->residentDetailAttributes(),
+            'email' => $this->email ?: null,
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
 
         ActivityLog::record(
             module: 'residents',
@@ -138,20 +154,26 @@ class extends Component {
                     <flux:label>{{ __('Civil Status') }} <span class="text-red-500">*</span></flux:label>
                     <flux:select wire:model="civil_status" required>
                         <option value="">{{ __('Select status') }}</option>
-                        <option value="single">{{ __('Single') }}</option>
-                        <option value="married">{{ __('Married') }}</option>
-                        <option value="widowed">{{ __('Widowed') }}</option>
-                        <option value="separated">{{ __('Separated') }}</option>
+                        @foreach (\App\Models\Resident::CIVIL_STATUSES as $value => $label)
+                            <option value="{{ $value }}">{{ __($label) }}</option>
+                        @endforeach
                     </flux:select>
                     <flux:error name="civil_status" />
                 </flux:field>
             </div>
 
-            <div class="mt-4">
-                <flux:field class="max-w-sm">
+            <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                <flux:field>
                     <flux:label>{{ __('Contact Number') }}</flux:label>
                     <flux:input wire:model="contact_number" type="tel" placeholder="+63 9XX XXX XXXX" />
                     <flux:error name="contact_number" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>{{ __('Email') }}</flux:label>
+                    <flux:input wire:model="email" type="email" />
+                    <flux:description>{{ __('For residents without an online account.') }}</flux:description>
+                    <flux:error name="email" />
                 </flux:field>
             </div>
         </div>
@@ -184,28 +206,23 @@ class extends Component {
             </div>
         </div>
 
-        {{-- Additional Information --}}
-        <div class="rounded-lg border border-zinc-200 p-6 dark:border-zinc-700">
-            <flux:heading size="lg" class="mb-4">{{ __('Additional Information') }}</flux:heading>
+        <x-resident-detail-fields>
+            <flux:field>
+                <flux:label>{{ __('Occupation') }}</flux:label>
+                <flux:input wire:model="occupation" />
+                <flux:error name="occupation" />
+            </flux:field>
 
-            <div class="grid gap-4 sm:grid-cols-2">
-                <flux:field>
-                    <flux:label>{{ __('Occupation') }}</flux:label>
-                    <flux:input wire:model="occupation" />
-                    <flux:error name="occupation" />
-                </flux:field>
+            <flux:field>
+                <flux:label>{{ __('Monthly Income') }}</flux:label>
+                <flux:input wire:model="monthly_income" type="number" min="0" step="0.01" placeholder="₱0.00" />
+                <flux:error name="monthly_income" />
+            </flux:field>
 
-                <flux:field>
-                    <flux:label>{{ __('Monthly Income') }}</flux:label>
-                    <flux:input wire:model="monthly_income" type="number" min="0" step="0.01" placeholder="₱0.00" />
-                    <flux:error name="monthly_income" />
-                </flux:field>
-            </div>
-
-            <div class="mt-4">
+            <div class="sm:col-span-2">
                 <flux:checkbox wire:model="is_voter" label="{{ __('Registered Voter') }}" />
             </div>
-        </div>
+        </x-resident-detail-fields>
 
         {{-- Form Actions --}}
         <div class="flex justify-end gap-2">

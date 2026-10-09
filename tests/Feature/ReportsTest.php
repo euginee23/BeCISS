@@ -55,10 +55,16 @@ test('the summary counts only records inside the date range', function () {
     expect($component->instance()->summary['Certificate requests'])->toBe(5);
 });
 
-test('collections total only paid records', function () {
-    Certificate::factory()->create(['fee' => 100, 'is_paid' => true, 'or_number' => 'OR-1']);
-    Certificate::factory()->create(['fee' => 50, 'is_paid' => true, 'or_number' => 'OR-2']);
+test('collections total payments received in the period', function () {
+    $cashier = User::factory()->staff()->create();
+    Certificate::factory()->create(['fee' => 100])->recordPayment('OR-1', $cashier);
+    Certificate::factory()->create(['fee' => 50])->recordPayment('OR-2', $cashier);
     Certificate::factory()->create(['fee' => 75, 'is_paid' => false, 'or_number' => null]);
+    Certificate::factory()->create(['fee' => 30, 'is_paid' => false, 'status' => 'cancelled']);
+
+    $this->travel(-2)->months();
+    Certificate::factory()->create(['fee' => 999])->recordPayment('OR-OLD', $cashier);
+    $this->travelBack();
 
     $revenue = Livewire::actingAs(User::factory()->admin()->create())
         ->test('pages::reports.index')

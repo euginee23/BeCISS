@@ -18,6 +18,10 @@ class ActivityLog extends Model
         'certificates' => 'Certificates',
         'appointments' => 'Appointments',
         'blotters' => 'Blotters',
+        'certificate_types' => 'Certificate Types',
+        'purposes' => 'Certificate Purposes',
+        'services' => 'Services',
+        'payments' => 'Payments',
     ];
 
     /**

@@ -27,6 +27,27 @@ class extends Component {
     public string $search = '';
 
     #[Url]
+    public string $purok = '';
+
+    #[Url]
+    public string $gender = '';
+
+    #[Url]
+    public string $civilStatus = '';
+
+    #[Url]
+    public string $ageGroup = '';
+
+    #[Url]
+    public string $voter = '';
+
+    #[Url]
+    public string $sector = '';
+
+    #[Url]
+    public string $account = '';
+
+    #[Url]
     public string $sortBy = 'last_name';
 
     #[Url]
@@ -55,6 +76,28 @@ class extends Component {
     public function updatedSearch(): void
     {
         $this->resetPage();
+    }
+
+    /**
+     * Any registry filter change starts again from the first page.
+     */
+    public function updated(string $property): void
+    {
+        if (in_array($property, ['purok', 'gender', 'civilStatus', 'ageGroup', 'voter', 'sector', 'account'], true)) {
+            $this->resetPage();
+        }
+    }
+
+    public function clearFilters(): void
+    {
+        $this->reset('search', 'purok', 'gender', 'civilStatus', 'ageGroup', 'voter', 'sector', 'account');
+        $this->resetPage();
+    }
+
+    #[Computed]
+    public function hasFilters(): bool
+    {
+        return (bool) ($this->search || $this->purok || $this->gender || $this->civilStatus || $this->ageGroup || $this->voter || $this->sector || $this->account);
     }
 
     public function updatedTab(): void
@@ -113,7 +156,9 @@ class extends Component {
             description: 'Approved the registration of '.$resident->full_name.'.',
         );
 
-        Mail::to($resident->user)->send(new ResidentApproved($resident->user, $resident));
+        if ($resident->user) {
+            Mail::to($resident->user)->send(new ResidentApproved($resident->user, $resident));
+        }
 
         $resident->user?->notify(new ResidentNotification(
             type: 'registration_approved',
@@ -195,8 +240,22 @@ class extends Component {
                     ->orWhere('purok', 'like', "%{$search}%")
                 )
             )
-            ->orderBy($this->sortBy, $this->sortDirection)
-            ->paginate(10);
+            ->when($this->tab === 'all', fn ($query) => $query
+                ->when($this->purok, fn ($q) => $q->where('purok', $this->purok))
+                ->when($this->gender, fn ($q) => $q->where('gender', $this->gender))
+                ->when($this->civilStatus, fn ($q) => $q->where('civil_status', $this->civilStatus))
+                ->when($this->ageGroup, fn ($q) => $q->ageGroup($this->ageGroup))
+                ->when($this->voter !== '', fn ($q) => $q->where('is_voter', $this->voter === 'yes'))
+                ->when($this->sector, fn ($q) => $q->inSector($this->sector))
+                ->when($this->account === 'with', fn ($q) => $q->whereNotNull('user_id'))
+                ->when($this->account === 'without', fn ($q) => $q->whereNull('user_id'))
+            )
+            ->orderBy(
+                in_array($this->sortBy, ['last_name', 'birthdate', 'purok', 'created_at'], true) ? $this->sortBy : 'last_name',
+                $this->sortDirection === 'desc' ? 'desc' : 'asc',
+            )
+            ->orderBy('first_name')
+            ->paginate(15);
     }
 }; ?>
 
@@ -204,7 +263,7 @@ class extends Component {
     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl">{{ __('Residents') }}</flux:heading>
-            <flux:text class="mt-1 text-zinc-500">{{ __('Manage barangay resident records') }}</flux:text>
+            <flux:text class="mt-1 text-zinc-500">{{ __('Registry of all barangay residents, with or without an online account') }}</flux:text>
         </div>
 
         <flux:button variant="primary" icon="plus" href="{{ route('residents.create') }}">
@@ -218,7 +277,7 @@ class extends Component {
             wire:click="$set('tab', 'all')"
             class="relative px-1 pb-3 text-sm font-medium transition-colors cursor-pointer {{ $tab === 'all' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300' }}"
         >
-            {{ __('All Residents') }}
+            {{ __('Registry') }}
             @if($tab === 'all')
                 <span class="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600 dark:bg-emerald-400 rounded-full"></span>
             @endif
@@ -237,14 +296,73 @@ class extends Component {
         </button>
     </div>
 
-    <div class="mb-4">
+    <div class="mb-4 flex flex-wrap items-center gap-3">
         <flux:input
             wire:model.live.debounce.300ms="search"
             icon="magnifying-glass"
             placeholder="{{ __('Search residents...') }}"
             class="max-w-sm"
         />
+
+        @if ($tab === 'all')
+            <flux:select wire:model.live="purok" class="max-w-40">
+                <option value="">{{ __('All Puroks') }}</option>
+                @foreach (\App\Models\Resident::PUROKS as $option)
+                    <option value="{{ $option }}">{{ $option }}</option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="gender" class="max-w-36">
+                <option value="">{{ __('All Genders') }}</option>
+                <option value="male">{{ __('Male') }}</option>
+                <option value="female">{{ __('Female') }}</option>
+            </flux:select>
+
+            <flux:select wire:model.live="civilStatus" class="max-w-40">
+                <option value="">{{ __('Any Civil Status') }}</option>
+                @foreach (\App\Models\Resident::CIVIL_STATUSES as $value => $label)
+                    <option value="{{ $value }}">{{ __($label) }}</option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="ageGroup" class="max-w-40">
+                <option value="">{{ __('All Ages') }}</option>
+                <option value="minor">{{ __('0–17 (Minor)') }}</option>
+                <option value="adult">{{ __('18–59 (Adult)') }}</option>
+                <option value="senior">{{ __('60+ (Senior)') }}</option>
+            </flux:select>
+
+            <flux:select wire:model.live="voter" class="max-w-36">
+                <option value="">{{ __('Voters & Non-voters') }}</option>
+                <option value="yes">{{ __('Voters') }}</option>
+                <option value="no">{{ __('Non-voters') }}</option>
+            </flux:select>
+
+            <flux:select wire:model.live="sector" class="max-w-52">
+                <option value="">{{ __('All Sectors') }}</option>
+                <option value="senior">{{ __('Senior Citizen') }}</option>
+                @foreach (\App\Models\Resident::SECTORS as $column => $label)
+                    <option value="{{ $column }}">{{ __($label) }}</option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="account" class="max-w-44">
+                <option value="">{{ __('With or without account') }}</option>
+                <option value="with">{{ __('Has online account') }}</option>
+                <option value="without">{{ __('No online account') }}</option>
+            </flux:select>
+
+            @if ($this->hasFilters)
+                <flux:button variant="ghost" size="sm" icon="x-mark" wire:click="clearFilters">{{ __('Clear') }}</flux:button>
+            @endif
+        @endif
     </div>
+
+    @if ($tab === 'all')
+        <flux:text class="mb-2 text-sm text-zinc-500">
+            {{ trans_choice(':count resident found|:count residents found', $this->residents->total()) }}
+        </flux:text>
+    @endif
 
     @if($tab === 'pending')
         {{-- ===== PENDING REGISTRATIONS VIEW ===== --}}
@@ -284,7 +402,7 @@ class extends Component {
                     </div>
                     <div>
                         <span class="text-zinc-500 dark:text-zinc-400">{{ __('Civil Status') }}</span>
-                        <p class="font-medium text-zinc-900 dark:text-white">{{ ucfirst($resident->civil_status) }}</p>
+                        <p class="font-medium text-zinc-900 dark:text-white">{{ $resident->civil_status_label }}</p>
                     </div>
                     <div>
                         <span class="text-zinc-500 dark:text-zinc-400">{{ __('Contact') }}</span>
@@ -328,6 +446,7 @@ class extends Component {
             <flux:table.column>{{ __('Address') }}</flux:table.column>
             <flux:table.column>{{ __('Contact') }}</flux:table.column>
             <flux:table.column>{{ __('Voter') }}</flux:table.column>
+            <flux:table.column>{{ __('Account') }}</flux:table.column>
             <flux:table.column></flux:table.column>
         </flux:table.columns>
 
@@ -339,7 +458,12 @@ class extends Component {
                             <flux:avatar size="xs" name="{{ $resident->full_name }}" />
                             <div>
                                 <div>{{ $resident->full_name }}</div>
-                                <div class="text-xs text-zinc-500">{{ ucfirst($resident->civil_status) }}</div>
+                                <div class="text-xs text-zinc-500">
+                                    {{ $resident->civil_status_label }}
+                                    @foreach ($resident->sector_labels as $sectorLabel)
+                                        · {{ $sectorLabel }}
+                                    @endforeach
+                                </div>
                             </div>
                         </div>
                     </flux:table.cell>
@@ -366,6 +490,13 @@ class extends Component {
                         @endif
                     </flux:table.cell>
                     <flux:table.cell>
+                        @if ($resident->user_id)
+                            <flux:badge size="sm" color="blue" icon="user-circle">{{ __('Online') }}</flux:badge>
+                        @else
+                            <flux:badge size="sm" color="zinc">{{ __('Walk-in') }}</flux:badge>
+                        @endif
+                    </flux:table.cell>
+                    <flux:table.cell>
                         <flux:dropdown>
                             <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" />
                             <flux:menu>
@@ -385,13 +516,13 @@ class extends Component {
                 </flux:table.row>
             @empty
                 <flux:table.row>
-                    <flux:table.cell colspan="7" class="text-center py-8">
+                    <flux:table.cell colspan="8" class="text-center py-8">
                         <div class="flex flex-col items-center gap-2">
                             <flux:icon name="users" class="size-12 text-zinc-300" />
                             <flux:text class="text-zinc-500">{{ __('No residents found') }}</flux:text>
-                            @if ($search)
-                                <flux:button variant="ghost" size="sm" wire:click="$set('search', '')">
-                                    {{ __('Clear search') }}
+                            @if ($this->hasFilters)
+                                <flux:button variant="ghost" size="sm" wire:click="clearFilters">
+                                    {{ __('Clear filters') }}
                                 </flux:button>
                             @endif
                         </div>

@@ -1,7 +1,10 @@
 <?php
 
+use App\Mail\AppointmentCancelled;
 use App\Models\ActivityLog;
 use App\Models\Appointment;
+use App\Notifications\ResidentNotification;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -65,7 +68,7 @@ class extends Component {
         if ($this->appointmentToCancel) {
             $appointment = Appointment::find($this->appointmentToCancel);
 
-            if ($appointment) {
+            if ($appointment && in_array($appointment->status, ['scheduled', 'confirmed'], true)) {
                 $appointment->update([
                     'status' => 'cancelled',
                     'cancelled_at' => now(),
@@ -80,6 +83,19 @@ class extends Component {
                     description: 'Cancelled '.$appointment->service_type_label.' ('.$appointment->reference_number.').',
                     properties: ['reason' => $this->cancellationReason],
                 );
+
+                $user = $appointment->resident?->user;
+
+                if ($user) {
+                    Mail::to($user->email)->send(new AppointmentCancelled($user, $appointment));
+
+                    $user->notify(new ResidentNotification(
+                        type: 'appointment_cancelled',
+                        title: 'Appointment Cancelled',
+                        body: 'Your appointment for '.$appointment->service_type_label.' ('.$appointment->reference_number.') has been cancelled.'.($this->cancellationReason ? ' Reason: '.$this->cancellationReason : ''),
+                        url: route('resident.appointments.index'),
+                    ));
+                }
             }
 
             $this->showCancelModal = false;

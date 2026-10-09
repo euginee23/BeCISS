@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\ActivityLog;
+use App\Models\User;
+use App\Notifications\ResidentNotification;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -72,6 +75,21 @@ class extends Component
                     'cancellation_reason' => $this->cancellationReason,
                     'cancelled_at' => now(),
                 ]);
+
+                ActivityLog::record(
+                    module: 'appointments',
+                    action: 'cancelled',
+                    subject: $appt,
+                    description: 'Cancelled by the resident — '.$appt->service_type_label.' ('.$appt->reference_number.').',
+                    properties: ['reason' => $this->cancellationReason],
+                );
+
+                User::withPermission('appointments')->each(fn (User $staff) => $staff->notify(new ResidentNotification(
+                    type: 'appointment_cancelled',
+                    title: 'Appointment Cancelled by Resident',
+                    body: $this->resident->full_name.' cancelled '.$appt->service_type_label.' on '.$appt->appointment_date->format('F j, Y').' ('.$appt->reference_number.'). Reason: '.$this->cancellationReason,
+                    url: route('appointments.show', $appt),
+                )));
             }
         }
 

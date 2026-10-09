@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\ProfileValidationRules;
+use App\Concerns\ResidentDetailFields;
 use App\Models\Resident;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +16,7 @@ new
 #[Title('Profile settings')]
 #[Layout('layouts::app')]
 class extends Component {
-    use ProfileValidationRules;
+    use ProfileValidationRules, ResidentDetailFields;
 
     public string $name = '';
     public string $email = '';
@@ -53,6 +54,7 @@ class extends Component {
             $this->occupation = $resident->occupation ?? '';
             $this->monthly_income = $resident->monthly_income;
             $this->is_voter = $resident->is_voter ?? false;
+            $this->fillResidentDetails($resident);
         }
     }
 
@@ -88,14 +90,18 @@ class extends Component {
             'residency_start_date' => ['required', 'date', 'before_or_equal:today'],
             'birthdate' => ['required', 'date', 'before:today'],
             'gender' => ['required', Rule::in(['male', 'female'])],
-            'civil_status' => ['required', Rule::in(['single', 'married', 'widowed', 'separated'])],
-            'contact_number' => ['nullable', 'string', 'max:50'],
+            'civil_status' => $this->civilStatusRules(),
+            'contact_number' => ['nullable', 'string', 'max:20'],
             'occupation' => ['nullable', 'string', 'max:255'],
             'monthly_income' => ['nullable', 'numeric', 'min:0'],
             'is_voter' => ['boolean'],
+            ...$this->residentDetailRules(),
         ]);
 
-        Auth::user()->resident->update($validated);
+        Auth::user()->resident->update([
+            ...$validated,
+            ...$this->residentDetailAttributes(),
+        ]);
 
         $this->dispatch('resident-profile-updated');
     }
@@ -213,10 +219,9 @@ class extends Component {
                             <flux:label>{{ __('Civil status') }} <span class="text-red-500">*</span></flux:label>
                             <flux:select wire:model="civil_status" required>
                                 <option value="">{{ __('Select status') }}</option>
-                                <option value="single">{{ __('Single') }}</option>
-                                <option value="married">{{ __('Married') }}</option>
-                                <option value="widowed">{{ __('Widowed') }}</option>
-                                <option value="separated">{{ __('Separated') }}</option>
+                                @foreach (\App\Models\Resident::CIVIL_STATUSES as $value => $label)
+                                    <option value="{{ $value }}">{{ __($label) }}</option>
+                                @endforeach
                             </flux:select>
                             <flux:error name="civil_status" />
                         </flux:field>
@@ -269,6 +274,8 @@ class extends Component {
                             <flux:checkbox wire:model="is_voter" label="{{ __('Registered Voter') }}" />
                         </div>
                     </div>
+
+                    <x-resident-detail-fields card="space-y-4 pt-2" />
 
                     <div class="flex items-center gap-4">
                         <div class="flex items-center justify-end">

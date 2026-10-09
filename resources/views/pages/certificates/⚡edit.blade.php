@@ -2,8 +2,10 @@
 
 use App\Models\ActivityLog;
 use App\Models\Certificate;
+use App\Models\CertificatePurpose;
+use App\Models\CertificateType;
 use App\Models\Resident;
-use App\Models\ServiceFee;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -29,6 +31,8 @@ class extends Component
 
     public function mount(Certificate $certificate): void
     {
+        abort_unless($certificate->isEditable(), 403);
+
         $this->certificate = $certificate;
 
         $this->resident_id = $certificate->resident_id;
@@ -47,8 +51,8 @@ class extends Component
     {
         return [
             'resident_id' => ['required', 'exists:residents,id'],
-            'type' => ['required', 'in:'.implode(',', array_keys(Certificate::TYPES))],
-            'purpose' => ['required', Rule::in(Certificate::PURPOSE_OPTIONS)],
+            'type' => ['required', Rule::in($this->types->pluck('slug')->all())],
+            'purpose' => ['required', Rule::in($this->purposeOptions())],
             'purpose_other' => ['nullable', 'string', 'max:255', 'required_if:purpose,Other'],
             'remarks' => ['nullable', 'string', 'max:1000'],
         ];
@@ -56,15 +60,21 @@ class extends Component
 
     public function save(): void
     {
+        abort_unless($this->certificate->fresh()->isEditable(), 403);
+
         $this->validate();
+
+        $typeChanged = $this->type !== $this->certificate->type;
 
         $this->certificate->update([
             'resident_id' => $this->resident_id,
             'type' => $this->type,
             'purpose' => $this->purpose,
-            'purpose_other' => $this->purpose === 'Other' ? $this->purpose_other : null,
+            'purpose_other' => $this->purpose === CertificatePurpose::OTHER ? $this->purpose_other : null,
             'remarks' => $this->remarks ?: null,
-            'fee' => ServiceFee::getFee($this->type),
+            'fee' => $typeChanged && ! $this->certificate->is_paid
+                ? CertificateType::feeFor($this->type)
+                : $this->certificate->fee,
         ]);
 
         ActivityLog::record(
@@ -77,6 +87,44 @@ class extends Component
         session()->flash('status', __('Certificate request updated successfully.'));
 
         $this->redirect(route('certificates.show', $this->certificate), navigate: true);
+    }
+
+    /**
+     * Active types, plus the certificate's own type when it has since been retired.
+     *
+     * @return Collection<int, CertificateType>
+     */
+    #[Computed]
+    public function types(): Collection
+    {
+        return CertificateType::withTrashed()
+            ->where(fn ($query) => $query
+                ->where(fn ($active) => $active->active()->whereNull('deleted_at'))
+                ->orWhere('slug', $this->certificate->type))
+            ->ordered()
+            ->get();
+    }
+
+    #[Computed]
+    public function selectedType(): ?CertificateType
+    {
+        return $this->types->firstWhere('slug', $this->type);
+    }
+
+    /**
+     * Active purposes, plus the certificate's own purpose when it has since been retired.
+     *
+     * @return list<string>
+     */
+    public function purposeOptions(): array
+    {
+        $options = CertificatePurpose::options();
+
+        if ($this->certificate->purpose && ! in_array($this->certificate->purpose, $options, true)) {
+            array_unshift($options, $this->certificate->purpose);
+        }
+
+        return $options;
     }
 
     #[Computed]
@@ -119,10 +167,10 @@ class extends Component
 
                 <flux:field>
                     <flux:label>{{ __('Certificate Type') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:select wire:model="type" required>
+                    <flux:select wire:model.live="type" required>
                         <option value="">{{ __('Select type') }}</option>
-                        @foreach (App\Models\Certificate::TYPES as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
+                        @foreach ($this->types as $certificateType)
+                            <option value="{{ $certificateType->slug }}">{{ $certificateType->name }}</option>
                         @endforeach
                     </flux:select>
                     <flux:error name="type" />
@@ -132,14 +180,14 @@ class extends Component
                     <flux:label>{{ __('Purpose') }} <span class="text-red-500">*</span></flux:label>
                     <flux:select wire:model.live="purpose" required>
                         <option value="">{{ __('Select purpose') }}</option>
-                        @foreach (Certificate::PURPOSE_OPTIONS as $option)
+                        @foreach ($this->purposeOptions() as $option)
                             <option value="{{ $option }}">{{ $option }}</option>
                         @endforeach
                     </flux:select>
                     <flux:error name="purpose" />
                 </flux:field>
 
-                @if ($purpose === 'Other')
+                @if ($purpose === CertificatePurpose::OTHER)
                     <flux:field class="sm:col-span-2">
                         <flux:label>{{ __('Specify Purpose') }} <span class="text-red-500">*</span></flux:label>
                         <flux:input wire:model="purpose_other" placeholder="{{ __('Enter the specific reason') }}" required />
@@ -156,20 +204,8 @@ class extends Component
         </div>
 
         {{-- Fee Information --}}
-        @if ($type)
-            <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-900/20">
-                <div class="flex items-center gap-3">
-                    <flux:icon name="banknotes" class="size-5 text-emerald-600" />
-                    <div>
-                        <flux:text class="font-medium text-emerald-900 dark:text-emerald-100">
-                            {{ __('Processing Fee') }}
-                        </flux:text>
-                        <flux:text class="text-2xl font-bold text-emerald-600">
-                            ₱{{ number_format(\App\Models\ServiceFee::getFee($type), 2) }}
-                        </flux:text>
-                    </div>
-                </div>
-            </div>
+        @if ($this->selectedType)
+            <x-certificate-type-summary :type="$this->selectedType" />
         @endif
 
         {{-- Form Actions --}}

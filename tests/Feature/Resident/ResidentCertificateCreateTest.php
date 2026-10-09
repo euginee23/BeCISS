@@ -1,8 +1,9 @@
 <?php
 
 use App\Models\Certificate;
+use App\Models\CertificatePurpose;
+use App\Models\CertificateType;
 use App\Models\Resident;
-use App\Models\ServiceFee;
 use App\Models\User;
 use Livewire\Livewire;
 
@@ -11,11 +12,6 @@ beforeEach(function () {
     $this->staff = User::factory()->staff()->create();
     $this->residentUser = User::factory()->resident()->create();
     $this->residentRecord = Resident::factory()->create(['user_id' => $this->residentUser->id]);
-
-    ServiceFee::updateOrCreate(['service_type' => 'barangay_clearance'], ['label' => 'Barangay Clearance', 'fee' => 50.00, 'is_active' => true]);
-    ServiceFee::updateOrCreate(['service_type' => 'barangay_certification'], ['label' => 'Barangay Certification', 'fee' => 50.00, 'is_active' => true]);
-    ServiceFee::updateOrCreate(['service_type' => 'certificate_of_residency'], ['label' => 'Certificate of Residency', 'fee' => 30.00, 'is_active' => true]);
-    ServiceFee::updateOrCreate(['service_type' => 'certificate_of_indigency'], ['label' => 'Certificate of Indigency', 'fee' => 0.00, 'is_active' => true]);
 });
 
 describe('page access', function () {
@@ -68,6 +64,7 @@ describe('certificate request submission', function () {
             ->test('pages::resident.certificates.create')
             ->set('type', 'certificate_of_residency')
             ->set('purpose', 'Other')
+            ->set('purpose_other', 'Water connection')
             ->call('save')
             ->assertRedirect(route('resident.certificates.index'));
 
@@ -82,6 +79,7 @@ describe('certificate request submission', function () {
             ->test('pages::resident.certificates.create')
             ->set('type', 'barangay_certification')
             ->set('purpose', 'Other')
+            ->set('purpose_other', 'Water connection')
             ->call('save')
             ->assertRedirect(route('resident.certificates.index'));
 
@@ -103,6 +101,45 @@ describe('certificate request submission', function () {
             'type' => 'certificate_of_indigency',
             'fee' => 0.00,
         ]);
+    });
+
+    it('uses the fee configured on the certificate type', function () {
+        CertificateType::where('slug', 'barangay_clearance')->update(['fee' => 75]);
+
+        Livewire::actingAs($this->residentUser)
+            ->test('pages::resident.certificates.create')
+            ->set('type', 'barangay_clearance')
+            ->set('purpose', 'Loan Application')
+            ->call('save');
+
+        $this->assertDatabaseHas('certificates', [
+            'type' => 'barangay_clearance',
+            'fee' => 75.00,
+        ]);
+    });
+
+    it('stores the specified purpose when other is chosen', function () {
+        Livewire::actingAs($this->residentUser)
+            ->test('pages::resident.certificates.create')
+            ->set('type', 'barangay_clearance')
+            ->set('purpose', 'Other')
+            ->set('purpose_other', 'Water connection')
+            ->call('save');
+
+        expect(Certificate::first()->purpose_label)->toBe('Water connection');
+    });
+
+    it('can request an admin-created type', function () {
+        CertificateType::factory()->create(['slug' => 'first_time_jobseeker', 'name' => 'First Time Jobseeker', 'fee' => 0]);
+
+        Livewire::actingAs($this->residentUser)
+            ->test('pages::resident.certificates.create')
+            ->set('type', 'first_time_jobseeker')
+            ->set('purpose', 'Employment / Job Application')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(Certificate::first()->type_label)->toBe('First Time Jobseeker');
     });
 
     it('generates a certificate number', function () {
@@ -154,5 +191,39 @@ describe('validation', function () {
             ->set('purpose', 'I need a cedula')
             ->call('save')
             ->assertHasErrors(['type']);
+    });
+
+    it('requires details when other is chosen', function () {
+        Livewire::actingAs($this->residentUser)
+            ->test('pages::resident.certificates.create')
+            ->set('type', 'barangay_clearance')
+            ->set('purpose', 'Other')
+            ->call('save')
+            ->assertHasErrors(['purpose_other']);
+    });
+
+    it('rejects staff-only and inactive types', function () {
+        CertificateType::factory()->staffOnly()->create(['slug' => 'staff_only_type']);
+        CertificateType::factory()->inactive()->create(['slug' => 'retired_type']);
+
+        foreach (['staff_only_type', 'retired_type'] as $slug) {
+            Livewire::actingAs($this->residentUser)
+                ->test('pages::resident.certificates.create')
+                ->set('type', $slug)
+                ->set('purpose', 'Loan Application')
+                ->call('save')
+                ->assertHasErrors(['type']);
+        }
+    });
+
+    it('rejects inactive purposes', function () {
+        CertificatePurpose::where('name', 'Loan Application')->update(['is_active' => false]);
+
+        Livewire::actingAs($this->residentUser)
+            ->test('pages::resident.certificates.create')
+            ->set('type', 'barangay_clearance')
+            ->set('purpose', 'Loan Application')
+            ->call('save')
+            ->assertHasErrors(['purpose']);
     });
 });

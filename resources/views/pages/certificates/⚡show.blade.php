@@ -1,12 +1,10 @@
 <?php
 
-use App\Mail\CertificateReadyForPickup;
-use App\Mail\CertificateRejected;
-use App\Models\ActivityLog;
 use App\Models\Certificate;
-use App\Notifications\ResidentNotification;
+use App\Models\CertificateType;
+use App\Services\CertificateWorkflow;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -17,192 +15,151 @@ new
 class extends Component {
     public Certificate $certificate;
 
-    public bool $showProcessModal = false;
+    public bool $showPaymentModal = false;
+    public bool $showReadyModal = false;
     public bool $showRejectModal = false;
-    public bool $showCompleteModal = false;
-    public bool $showExportModal = false;
+    public bool $showCancelModal = false;
 
     public string $rejectionReason = '';
+    public string $cancellationReason = '';
     public string $orNumber = '';
+    public string $paymentRemarks = '';
 
-    public string $dateOfIssuance = '';
-    public string $ctcNo = '';
+    public string $issuedAt = '';
+    public string $ctcNumber = '';
     public string $ctcPlaceIssued = '';
     public string $ctcDateIssued = '';
-    public string $exportFormat = 'docx';
 
     public function mount(Certificate $certificate): void
     {
-        $this->certificate = $certificate->load('resident', 'processor');
+        $this->certificate = $certificate->load('resident', 'processor', 'certificateType', 'latestPayment.receiver');
     }
 
-    public function startProcessing(): void
+    #[Computed]
+    public function requiresCtc(): bool
     {
-        $this->certificate->update([
-            'status' => 'processing',
-            'processed_by' => Auth::id(),
-            'processed_at' => now(),
-        ]);
-
-        $this->certificate->refresh();
-        $this->log('processing', 'Started processing');
-
-        $user = $this->certificate->resident?->user;
-        $user?->notify(new ResidentNotification(
-            type: 'certificate_processing',
-            title: 'Certificate Being Processed',
-            body: 'Your ' . $this->certificate->type_label . ' (' . $this->certificate->certificate_number . ') is now being processed.',
-            url: route('resident.certificates.index'),
-        ));
+        return CertificateType::requiresCtc($this->certificate->type);
     }
 
-    public function markReadyForPickup(): void
+    #[Computed]
+    public function canRecordPayment(): bool
     {
-        $this->certificate->update([
-            'status' => 'ready_for_pickup',
-        ]);
-
-        $this->certificate->refresh();
-        $this->log('ready', 'Marked ready for pickup');
-        $this->notifyResident(CertificateReadyForPickup::class);
-        $this->notifyResidentDatabase(
-            type: 'certificate_ready',
-            title: 'Certificate Ready for Pickup',
-            body: 'Your ' . $this->certificate->type_label . ' (' . $this->certificate->certificate_number . ') is ready for pickup at the barangay hall.',
-        );
+        return Auth::user()->hasPermission('payments');
     }
 
-    public function openCompleteModal(): void
+    #[Computed]
+    public function visit(): ?\App\Models\Appointment
     {
-        $this->showCompleteModal = true;
+        return $this->certificate->activeAppointment();
     }
 
-    public function completeCertificate(): void
+    public function approve(CertificateWorkflow $workflow): void
     {
+        $workflow->approve($this->certificate, Auth::user());
+        $this->refreshCertificate();
+    }
+
+    public function openPaymentModal(): void
+    {
+        $this->resetValidation();
+        $this->orNumber = '';
+        $this->paymentRemarks = '';
+        $this->showPaymentModal = true;
+    }
+
+    public function recordPayment(CertificateWorkflow $workflow): void
+    {
+        abort_unless($this->canRecordPayment, 403);
+
         $this->validate([
             'orNumber' => ['required', 'string', 'max:50'],
+            'paymentRemarks' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $this->certificate->update([
-            'status' => 'completed',
-            'completed_at' => now(),
-            'is_paid' => true,
-            'or_number' => $this->orNumber,
+        $workflow->recordPayment($this->certificate, trim($this->orNumber), Auth::user(), $this->paymentRemarks ?: null);
+
+        $this->showPaymentModal = false;
+        $this->refreshCertificate();
+    }
+
+    public function openReadyModal(): void
+    {
+        $this->resetValidation();
+        $this->issuedAt = now()->format('Y-m-d');
+        $this->ctcNumber = '';
+        $this->ctcPlaceIssued = '';
+        $this->ctcDateIssued = now()->format('Y-m-d');
+        $this->showReadyModal = true;
+    }
+
+    public function markReady(CertificateWorkflow $workflow): void
+    {
+        $ctcRule = $this->requiresCtc ? 'required' : 'nullable';
+
+        $this->validate([
+            'issuedAt' => ['required', 'date'],
+            'ctcNumber' => [$ctcRule, 'string', 'max:100'],
+            'ctcPlaceIssued' => [$ctcRule, 'string', 'max:200'],
+            'ctcDateIssued' => [$ctcRule, 'date'],
         ]);
 
-        $this->showCompleteModal = false;
-        $this->certificate->refresh();
-        $this->log('completed', 'Released and completed');
-        $this->log(
-            'paid',
-            'Recorded payment of ₱'.number_format((float) $this->certificate->fee, 2).' under OR '.$this->certificate->or_number,
-            ['or_number' => $this->certificate->or_number, 'fee' => (float) $this->certificate->fee],
-        );
+        $workflow->markReady($this->certificate, [
+            'issued_at' => $this->issuedAt,
+            'ctc_number' => $this->ctcNumber ?: null,
+            'ctc_place_issued' => $this->ctcPlaceIssued ?: null,
+            'ctc_date_issued' => $this->requiresCtc || $this->ctcNumber ? ($this->ctcDateIssued ?: null) : null,
+        ]);
 
-        $user = $this->certificate->resident?->user;
-        $user?->notify(new ResidentNotification(
-            type: 'certificate_completed',
-            title: 'Certificate Completed',
-            body: 'Your ' . $this->certificate->type_label . ' (' . $this->certificate->certificate_number . ') has been released and completed.',
-            url: route('resident.certificates.index'),
-        ));
+        $this->showReadyModal = false;
+        $this->refreshCertificate();
+    }
+
+    public function release(CertificateWorkflow $workflow): void
+    {
+        $workflow->release($this->certificate);
+        $this->refreshCertificate();
     }
 
     public function openRejectModal(): void
     {
+        $this->resetValidation();
         $this->showRejectModal = true;
     }
 
-    public function rejectCertificate(): void
+    public function rejectCertificate(CertificateWorkflow $workflow): void
     {
         $this->validate([
             'rejectionReason' => ['required', 'string', 'max:500'],
         ]);
 
-        $this->certificate->update([
-            'status' => 'rejected',
-            'rejected_at' => now(),
-            'rejection_reason' => $this->rejectionReason,
-        ]);
+        $workflow->reject($this->certificate, $this->rejectionReason);
 
         $this->showRejectModal = false;
-        $this->certificate->refresh();
-        $this->log('rejected', 'Rejected. Reason: '.$this->certificate->rejection_reason, ['reason' => $this->certificate->rejection_reason]);
-        $this->notifyResident(CertificateRejected::class);
-        $this->notifyResidentDatabase(
-            type: 'certificate_rejected',
-            title: 'Certificate Request Rejected',
-            body: 'Your ' . $this->certificate->type_label . ' (' . $this->certificate->certificate_number . ') was rejected. Reason: ' . $this->rejectionReason,
-        );
+        $this->refreshCertificate();
     }
 
-    /**
-     * @param  array<string, mixed>|null  $properties
-     */
-    private function log(string $action, string $summary, ?array $properties = null): void
-    {
-        ActivityLog::record(
-            module: 'certificates',
-            action: $action,
-            subject: $this->certificate,
-            description: $summary.' — '.$this->certificate->type_label.' ('.$this->certificate->certificate_number.').',
-            properties: $properties,
-        );
-    }
-
-    private function notifyResident(string $mailableClass): void
-    {
-        $user = $this->certificate->resident?->user;
-
-        if ($user) {
-            Mail::to($user->email)->send(new $mailableClass($user, $this->certificate));
-        }
-    }
-
-    private function notifyResidentDatabase(string $type, string $title, string $body): void
-    {
-        $user = $this->certificate->resident?->user;
-
-        $user?->notify(new ResidentNotification(
-            type: $type,
-            title: $title,
-            body: $body,
-            url: route('resident.certificates.index'),
-        ));
-    }
-
-    public function openExportModal(): void
+    public function openCancelModal(): void
     {
         $this->resetValidation();
-        $this->dateOfIssuance = now()->format('Y-m-d');
-        $this->ctcNo = '';
-        $this->ctcPlaceIssued = '';
-        $this->ctcDateIssued = now()->format('Y-m-d');
-        $this->exportFormat = 'docx';
-        $this->showExportModal = true;
+        $this->showCancelModal = true;
     }
 
-    public function downloadCertificate(): void
+    public function cancelCertificate(CertificateWorkflow $workflow): void
     {
         $this->validate([
-            'dateOfIssuance' => ['required', 'date'],
-            'ctcNo' => ['required', 'string', 'max:100'],
-            'ctcPlaceIssued' => ['required', 'string', 'max:200'],
-            'ctcDateIssued' => ['required', 'date'],
-            'exportFormat' => ['required', 'in:docx,pdf'],
+            'cancellationReason' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $url = route('certificates.download', $this->certificate).'?'.http_build_query([
-            'format' => $this->exportFormat,
-            'date_of_issuance' => $this->dateOfIssuance,
-            'ctc_no' => $this->ctcNo,
-            'ctc_place_issued' => $this->ctcPlaceIssued,
-            'ctc_date_issued' => $this->ctcDateIssued,
-        ]);
+        $workflow->cancel($this->certificate, Auth::user(), $this->cancellationReason ?: null);
 
-        $this->showExportModal = false;
+        $this->showCancelModal = false;
+        $this->refreshCertificate();
+    }
 
-        $this->dispatch('download-certificate', url: $url);
+    private function refreshCertificate(): void
+    {
+        $this->certificate->refresh()->load('resident', 'processor', 'certificateType', 'latestPayment.receiver');
+        unset($this->visit);
     }
 }; ?>
 
@@ -212,7 +169,7 @@ class extends Component {
             {{ __('Back to Certificates') }}
         </flux:button>
 
-        @if (in_array($certificate->status, ['pending', 'processing']))
+        @if ($certificate->isEditable())
             <flux:button variant="primary" icon="pencil" href="{{ route('certificates.edit', $certificate) }}">
                 {{ __('Edit') }}
             </flux:button>
@@ -231,34 +188,57 @@ class extends Component {
         </div>
 
         {{-- Action Buttons --}}
-        <div class="flex gap-2">
-            @if (in_array($certificate->type, ['certificate_of_residency', 'barangay_clearance', 'certificate_of_indigency', 'barangay_certification']) && in_array($certificate->status, ['processing', 'ready_for_pickup', 'completed']))
-                <flux:button variant="primary" icon="arrow-down-tray" wire:click="openExportModal">
-                    {{ __('Download') }}
+        <div class="flex flex-wrap gap-2">
+            @if ($certificate->isPrintable())
+                <flux:button variant="filled" icon="arrow-down-tray" href="{{ route('certificates.download', $certificate) }}" target="_blank">
+                    {{ __('Download PDF') }}
                 </flux:button>
             @endif
 
             @if ($certificate->status === 'pending')
-                <flux:button variant="primary" wire:click="startProcessing">
-                    {{ __('Start Processing') }}
+                <flux:button variant="primary" icon="check" wire:click="approve">
+                    {{ $certificate->requiresPayment() ? __('Approve (Awaiting Payment)') : __('Approve & Process') }}
                 </flux:button>
-                <flux:button variant="danger" wire:click="openRejectModal">
-                    {{ __('Reject') }}
+            @elseif ($certificate->status === 'awaiting_payment' && $this->canRecordPayment)
+                <flux:button variant="primary" icon="banknotes" wire:click="openPaymentModal">
+                    {{ __('Record Payment') }}
                 </flux:button>
             @elseif ($certificate->status === 'processing')
-                <flux:button variant="primary" wire:click="markReadyForPickup">
+                <flux:button variant="primary" icon="document-check" wire:click="openReadyModal">
                     {{ __('Mark Ready for Pickup') }}
                 </flux:button>
+            @elseif ($certificate->status === 'ready_for_pickup')
+                <flux:button variant="primary" icon="hand-raised" wire:click="release" wire:confirm="{{ __('Release this certificate to the resident?') }}">
+                    {{ __('Release') }}
+                </flux:button>
+            @endif
+
+            @if ($certificate->canTransitionTo('rejected'))
                 <flux:button variant="danger" wire:click="openRejectModal">
                     {{ __('Reject') }}
                 </flux:button>
-            @elseif ($certificate->status === 'ready_for_pickup')
-                <flux:button variant="primary" wire:click="openCompleteModal">
-                    {{ __('Complete & Release') }}
+            @endif
+
+            @if ($certificate->isCancellable())
+                <flux:button variant="ghost" wire:click="openCancelModal">
+                    {{ __('Cancel Request') }}
                 </flux:button>
             @endif
         </div>
     </div>
+
+    <flux:error name="status" class="mb-4" />
+
+    @if ($this->visit)
+        <flux:callout icon="calendar-days" color="blue" class="mb-6">
+            <flux:callout.heading>{{ __('Visit scheduled') }}</flux:callout.heading>
+            <flux:callout.text>
+                {{ $this->visit->appointment_date->format('F j, Y') }} {{ __('at') }} {{ $this->visit->appointment_time->format('g:i A') }}
+                ({{ $this->visit->reference_number }}) —
+                <flux:link href="{{ route('appointments.show', $this->visit) }}" wire:navigate>{{ __('View appointment') }}</flux:link>
+            </flux:callout.text>
+        </flux:callout>
+    @endif
 
     <div class="grid gap-6 lg:grid-cols-2">
         {{-- Requester Information --}}
@@ -311,13 +291,15 @@ class extends Component {
                 <flux:separator />
                 <div class="flex justify-between">
                     <dt class="text-zinc-500">{{ __('Processing Fee') }}</dt>
-                    <dd class="font-medium text-lg">₱{{ number_format($certificate->fee, 2) }}</dd>
+                    <dd class="font-medium text-lg">{{ (float) $certificate->fee > 0 ? '₱'.number_format($certificate->fee, 2) : __('Free') }}</dd>
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-zinc-500">{{ __('Payment Status') }}</dt>
                     <dd>
                         @if ($certificate->is_paid)
                             <flux:badge size="sm" color="emerald">{{ __('Paid') }}</flux:badge>
+                        @elseif ((float) $certificate->fee <= 0)
+                            <flux:badge size="sm" color="zinc">{{ __('No payment needed') }}</flux:badge>
                         @else
                             <flux:badge size="sm" color="amber">{{ __('Unpaid') }}</flux:badge>
                         @endif
@@ -328,6 +310,29 @@ class extends Component {
                         <dt class="text-zinc-500">{{ __('OR Number') }}</dt>
                         <dd class="font-mono font-medium">{{ $certificate->or_number }}</dd>
                     </div>
+                @endif
+                @if ($certificate->latestPayment)
+                    <div class="flex justify-between">
+                        <dt class="text-zinc-500">{{ __('Paid On') }}</dt>
+                        <dd class="font-medium">{{ $certificate->latestPayment->paid_at->format('M j, Y g:i A') }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-zinc-500">{{ __('Received By') }}</dt>
+                        <dd class="font-medium">{{ $certificate->latestPayment->receiver?->name ?? '—' }}</dd>
+                    </div>
+                @endif
+                @if ($certificate->issued_at)
+                    <flux:separator />
+                    <div class="flex justify-between">
+                        <dt class="text-zinc-500">{{ __('Date of Issuance') }}</dt>
+                        <dd class="font-medium">{{ $certificate->issued_at->format('F j, Y') }}</dd>
+                    </div>
+                    @if ($certificate->ctc_number)
+                        <div class="flex justify-between">
+                            <dt class="text-zinc-500">{{ __('CTC No.') }}</dt>
+                            <dd class="font-medium text-right">{{ $certificate->ctc_number }} · {{ $certificate->ctc_place_issued }} · {{ $certificate->ctc_date_issued?->format('M j, Y') }}</dd>
+                        </div>
+                    @endif
                 @endif
             </dl>
         </div>
@@ -353,6 +358,26 @@ class extends Component {
                     </div>
                 </div>
 
+                @if ($certificate->approved_at)
+                    <div class="flex items-start gap-3">
+                        <div class="mt-1 size-2 rounded-full bg-orange-500"></div>
+                        <div>
+                            <flux:text class="font-medium">{{ __('Approved') }}</flux:text>
+                            <flux:text class="text-sm text-zinc-500">{{ $certificate->approved_at->format('M j, Y g:i A') }}</flux:text>
+                        </div>
+                    </div>
+                @endif
+
+                @if ($certificate->latestPayment)
+                    <div class="flex items-start gap-3">
+                        <div class="mt-1 size-2 rounded-full bg-emerald-500"></div>
+                        <div>
+                            <flux:text class="font-medium">{{ __('Payment Received') }}</flux:text>
+                            <flux:text class="text-sm text-zinc-500">{{ $certificate->latestPayment->paid_at->format('M j, Y g:i A') }} · OR {{ $certificate->latestPayment->or_number }}</flux:text>
+                        </div>
+                    </div>
+                @endif
+
                 @if ($certificate->processed_at)
                     <div class="flex items-start gap-3">
                         <div class="mt-1 size-2 rounded-full bg-blue-500"></div>
@@ -376,6 +401,16 @@ class extends Component {
                     </div>
                 @endif
 
+                @if ($certificate->cancelled_at)
+                    <div class="flex items-start gap-3">
+                        <div class="mt-1 size-2 rounded-full bg-zinc-400"></div>
+                        <div>
+                            <flux:text class="font-medium">{{ __('Cancelled') }}</flux:text>
+                            <flux:text class="text-sm text-zinc-500">{{ $certificate->cancelled_at->format('M j, Y g:i A') }}</flux:text>
+                        </div>
+                    </div>
+                @endif
+
                 @if ($certificate->rejected_at)
                     <div class="flex items-start gap-3">
                         <div class="mt-1 size-2 rounded-full bg-red-500"></div>
@@ -392,13 +427,13 @@ class extends Component {
         </div>
     </div>
 
-    {{-- Complete Modal --}}
-    <flux:modal wire:model="showCompleteModal" class="max-w-sm">
-        <div class="space-y-6">
+    {{-- Payment Modal --}}
+    <flux:modal wire:model="showPaymentModal" class="max-w-sm">
+        <form wire:submit="recordPayment" class="space-y-6">
             <div>
-                <flux:heading size="lg">{{ __('Complete Certificate') }}</flux:heading>
+                <flux:heading size="lg">{{ __('Record Payment') }}</flux:heading>
                 <flux:text class="mt-2">
-                    {{ __('Enter the Official Receipt number to complete this certificate request.') }}
+                    {{ __('Amount due') }}: <strong>₱{{ number_format($certificate->fee, 2) }}</strong>
                 </flux:text>
             </div>
 
@@ -408,13 +443,77 @@ class extends Component {
                 <flux:error name="orNumber" />
             </flux:field>
 
+            <flux:field>
+                <flux:label>{{ __('Remarks') }}</flux:label>
+                <flux:input wire:model="paymentRemarks" />
+                <flux:error name="paymentRemarks" />
+            </flux:field>
+
+            <flux:error name="status" />
+
             <div class="flex justify-end gap-2">
-                <flux:button variant="ghost" wire:click="$set('showCompleteModal', false)">
-                    {{ __('Cancel') }}
-                </flux:button>
-                <flux:button variant="primary" wire:click="completeCertificate">
-                    {{ __('Complete') }}
-                </flux:button>
+                <flux:button variant="ghost" wire:click="$set('showPaymentModal', false)">{{ __('Cancel') }}</flux:button>
+                <flux:button type="submit" variant="primary">{{ __('Record Payment') }}</flux:button>
+            </div>
+        </form>
+    </flux:modal>
+
+    {{-- Ready Modal --}}
+    <flux:modal wire:model="showReadyModal" class="max-w-sm">
+        <form wire:submit="markReady" class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Issuance Details') }}</flux:heading>
+                <flux:text class="mt-2">{{ __('These details are printed on the certificate and kept for reprints.') }}</flux:text>
+            </div>
+
+            <flux:field>
+                <flux:label>{{ __('Date of Issuance') }} <span class="text-red-500">*</span></flux:label>
+                <flux:input type="date" wire:model="issuedAt" required />
+                <flux:error name="issuedAt" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('CTC No.') }} @if ($this->requiresCtc)<span class="text-red-500">*</span>@endif</flux:label>
+                <flux:input wire:model="ctcNumber" placeholder="e.g. 12345678" :required="$this->requiresCtc" />
+                <flux:error name="ctcNumber" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('CTC Place Issued') }} @if ($this->requiresCtc)<span class="text-red-500">*</span>@endif</flux:label>
+                <flux:input wire:model="ctcPlaceIssued" placeholder="e.g. Municipality of ..." :required="$this->requiresCtc" />
+                <flux:error name="ctcPlaceIssued" />
+            </flux:field>
+
+            <flux:field>
+                <flux:label>{{ __('CTC Date Issued') }} @if ($this->requiresCtc)<span class="text-red-500">*</span>@endif</flux:label>
+                <flux:input type="date" wire:model="ctcDateIssued" :required="$this->requiresCtc" />
+                <flux:error name="ctcDateIssued" />
+            </flux:field>
+
+            <div class="flex justify-end gap-2">
+                <flux:button variant="ghost" wire:click="$set('showReadyModal', false)">{{ __('Cancel') }}</flux:button>
+                <flux:button type="submit" variant="primary">{{ __('Mark Ready') }}</flux:button>
+            </div>
+        </form>
+    </flux:modal>
+
+    {{-- Cancel Modal --}}
+    <flux:modal wire:model="showCancelModal" class="max-w-sm">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Cancel Request') }}</flux:heading>
+                <flux:text class="mt-2">{{ __('The resident will be notified. Any scheduled visit is cancelled too.') }}</flux:text>
+            </div>
+
+            <flux:field>
+                <flux:label>{{ __('Reason') }}</flux:label>
+                <flux:textarea wire:model="cancellationReason" rows="3" />
+                <flux:error name="cancellationReason" />
+            </flux:field>
+
+            <div class="flex justify-end gap-2">
+                <flux:button variant="ghost" wire:click="$set('showCancelModal', false)">{{ __('Back') }}</flux:button>
+                <flux:button variant="danger" wire:click="cancelCertificate">{{ __('Cancel Request') }}</flux:button>
             </div>
         </div>
     </flux:modal>
@@ -446,65 +545,4 @@ class extends Component {
         </div>
     </flux:modal>
 
-    {{-- Export Modal --}}
-    <flux:modal wire:model="showExportModal" class="max-w-sm">
-        <div class="space-y-6">
-            <div>
-                <flux:heading size="lg">{{ __('Download Certificate') }}</flux:heading>
-                <flux:text class="mt-2">
-                    {{ __('Fill in the details below before generating the document.') }}
-                </flux:text>
-            </div>
-
-            <flux:field>
-                <flux:label>{{ __('Date of Issuance') }} <span class="text-red-500">*</span></flux:label>
-                <flux:input type="date" wire:model="dateOfIssuance" required />
-                <flux:error name="dateOfIssuance" />
-            </flux:field>
-
-            <flux:field>
-                <flux:label>{{ __('CTC No.') }} <span class="text-red-500">*</span></flux:label>
-                <flux:input wire:model="ctcNo" placeholder="e.g. 12345678" required />
-                <flux:error name="ctcNo" />
-            </flux:field>
-
-            <flux:field>
-                <flux:label>{{ __('CTC Place Issued') }} <span class="text-red-500">*</span></flux:label>
-                <flux:input wire:model="ctcPlaceIssued" placeholder="e.g. Municipality of ..." required />
-                <flux:error name="ctcPlaceIssued" />
-            </flux:field>
-
-            <flux:field>
-                <flux:label>{{ __('CTC Date Issued') }} <span class="text-red-500">*</span></flux:label>
-                <flux:input type="date" wire:model="ctcDateIssued" required />
-                <flux:error name="ctcDateIssued" />
-            </flux:field>
-
-            <flux:field>
-                <flux:label>{{ __('Format') }}</flux:label>
-                <flux:radio.group wire:model="exportFormat">
-                    <flux:radio value="docx" label="{{ __('Word Document (.docx)') }}" />
-                    <flux:radio value="pdf" label="{{ __('PDF (.pdf)') }}" />
-                </flux:radio.group>
-                <flux:error name="exportFormat" />
-            </flux:field>
-
-            <div class="flex justify-end gap-2">
-                <flux:button variant="ghost" wire:click="$set('showExportModal', false)">
-                    {{ __('Cancel') }}
-                </flux:button>
-                <flux:button variant="primary" icon="arrow-down-tray" wire:click="downloadCertificate">
-                    {{ __('Generate & Download') }}
-                </flux:button>
-            </div>
-        </div>
-    </flux:modal>
 </div>
-
-@script
-<script>
-    $wire.on('download-certificate', ({ url }) => {
-        window.open(url, '_blank');
-    });
-</script>
-@endscript

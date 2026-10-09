@@ -5,11 +5,15 @@ use App\Http\Controllers\Auth\VerifyEmailCodeController;
 use App\Http\Controllers\BlotterDownloadController;
 use App\Http\Controllers\CertificateDownloadController;
 use App\Models\BarangayProfile;
+use App\Models\CertificateType;
+use App\Models\Service;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome', [
         'barangay' => BarangayProfile::first(),
+        'certificateTypes' => CertificateType::query()->active()->where('available_to_residents', true)->ordered()->get(),
+        'services' => Service::query()->onWebsite()->ordered()->get(),
     ]);
 })->name('home');
 
@@ -61,6 +65,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::middleware(['role:admin'])->group(function () {
             Route::livewire('admin/settings', 'pages::admin.settings.barangay')->name('admin.settings.barangay');
             Route::livewire('admin/settings/service-fees', 'pages::admin.settings.service-fees')->name('admin.settings.service-fees');
+            Route::livewire('admin/settings/certificate-types', 'pages::admin.settings.certificate-types')->name('admin.settings.certificate-types');
+            Route::livewire('admin/settings/purposes', 'pages::admin.settings.purposes')->name('admin.settings.purposes');
+            Route::livewire('admin/settings/services', 'pages::admin.settings.services')->name('admin.settings.services');
 
             // Staff Management
             Route::livewire('staff', 'pages::staff.index')->name('staff.index');
@@ -85,6 +92,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::middleware(['role:admin,staff'])->group(function () {
             // Reports span every module, so they sit outside the per-resource permissions.
             Route::livewire('reports', 'pages::reports.index')->name('reports.index');
+            Route::livewire('reports/collections', 'pages::reports.collections')
+                ->middleware('permission:payments')
+                ->name('reports.collections');
 
             // Residents Management
             Route::middleware(['permission:residents'])->group(function () {

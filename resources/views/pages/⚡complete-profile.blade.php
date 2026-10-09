@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\ResidentDetailFields;
 use App\Mail\NewPendingRegistration;
 use App\Models\Resident;
 use App\Models\User;
@@ -14,6 +15,8 @@ new
 #[Title('Complete Your Profile')]
 #[Layout('layouts::auth-form')]
 class extends Component {
+    use ResidentDetailFields;
+
     #[Validate('required|string|max:255')]
     public string $first_name = '';
 
@@ -32,7 +35,6 @@ class extends Component {
     #[Validate('required|in:male,female')]
     public string $gender = '';
 
-    #[Validate('required|in:single,married,widowed,separated,divorced')]
     public string $civil_status = 'single';
 
     #[Validate('required|string|max:20')]
@@ -49,6 +51,12 @@ class extends Component {
     #[Validate('required|date|before_or_equal:today')]
     public ?string $residency_start_date = '';
 
+    public string $occupation = '';
+
+    public ?float $monthly_income = null;
+
+    public bool $is_voter = false;
+
     public ?string $rejectionReason = null;
 
     /**
@@ -60,6 +68,11 @@ class extends Component {
     {
         return [
             'purok' => ['required', Rule::in(Resident::PUROKS)],
+            'civil_status' => $this->civilStatusRules(),
+            'occupation' => ['nullable', 'string', 'max:255'],
+            'monthly_income' => ['nullable', 'numeric', 'min:0'],
+            'is_voter' => ['boolean'],
+            ...$this->residentDetailRules(),
         ];
     }
 
@@ -88,6 +101,10 @@ class extends Component {
             $this->street = $resident->street ?? '';
             $this->purok = $resident->purok ?? '';
             $this->residency_start_date = $resident->residency_start_date?->format('Y-m-d') ?? '';
+            $this->occupation = $resident->occupation ?? '';
+            $this->monthly_income = $resident->monthly_income;
+            $this->is_voter = (bool) $resident->is_voter;
+            $this->fillResidentDetails($resident);
         }
     }
 
@@ -112,6 +129,10 @@ class extends Component {
             'street' => $this->street,
             'purok' => $this->purok,
             'residency_start_date' => $this->residency_start_date,
+            'occupation' => $this->occupation ?: null,
+            'monthly_income' => $this->monthly_income,
+            'is_voter' => $this->is_voter,
+            ...$this->residentDetailAttributes(),
             'status' => 'pending',
             'rejection_reason' => null,
         ];
@@ -242,11 +263,9 @@ class extends Component {
                 <flux:field>
                     <flux:label>{{ __('Civil Status') }} <span class="text-red-500">*</span></flux:label>
                     <flux:select wire:model="civil_status" required>
-                        <option value="single">{{ __('Single') }}</option>
-                        <option value="married">{{ __('Married') }}</option>
-                        <option value="widowed">{{ __('Widowed') }}</option>
-                        <option value="separated">{{ __('Separated') }}</option>
-                        <option value="divorced">{{ __('Divorced') }}</option>
+                        @foreach (\App\Models\Resident::CIVIL_STATUSES as $value => $label)
+                            <option value="{{ $value }}">{{ __($label) }}</option>
+                        @endforeach
                     </flux:select>
                     <flux:error name="civil_status" />
                 </flux:field>
@@ -291,6 +310,40 @@ class extends Component {
                 <flux:error name="residency_start_date" />
             </flux:field>
         </div>
+
+        <flux:separator />
+
+        {{-- Section: Additional Information --}}
+        <details class="group space-y-4" @if ($errors->hasAny(array_keys($this->residentDetailRules()))) open @endif>
+            <summary class="flex cursor-pointer items-center gap-2.5 list-none">
+                <div class="flex items-center justify-center size-7 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                    <flux:icon name="clipboard-document-list" class="size-4 text-purple-600 dark:text-purple-400" />
+                </div>
+                <h2 class="text-sm font-semibold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">{{ __('Additional Information') }}</h2>
+                <span class="text-xs text-zinc-400">{{ __('Optional') }}</span>
+                <flux:icon name="chevron-down" class="size-4 text-zinc-400 ml-auto transition-transform group-open:rotate-180" />
+            </summary>
+
+            <div class="mt-4 space-y-4">
+                <x-resident-detail-fields card="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <flux:field>
+                        <flux:label>{{ __('Occupation') }}</flux:label>
+                        <flux:input wire:model="occupation" />
+                        <flux:error name="occupation" />
+                    </flux:field>
+
+                    <flux:field>
+                        <flux:label>{{ __('Monthly Income') }}</flux:label>
+                        <flux:input wire:model="monthly_income" type="number" min="0" step="0.01" placeholder="₱0.00" />
+                        <flux:error name="monthly_income" />
+                    </flux:field>
+
+                    <div class="sm:col-span-2">
+                        <flux:checkbox wire:model="is_voter" label="{{ __('Registered Voter') }}" />
+                    </div>
+                </x-resident-detail-fields>
+            </div>
+        </details>
 
         {{-- Submit Area --}}
         <div class="pt-2">

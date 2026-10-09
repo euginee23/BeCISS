@@ -13,7 +13,7 @@ class extends Component {
 
     public function mount(Resident $resident): void
     {
-        $this->resident = $resident;
+        $this->resident = $resident->load('user');
     }
 }; ?>
 
@@ -33,8 +33,15 @@ class extends Component {
         <div>
             <flux:heading size="xl">{{ $resident->full_name }}</flux:heading>
             <flux:text class="text-zinc-500">
-                {{ $resident->age }} {{ __('years old') }} &bull; {{ ucfirst($resident->gender) }} &bull; {{ ucfirst($resident->civil_status) }}
+                {{ $resident->age }} {{ __('years old') }} &bull; {{ ucfirst($resident->gender) }} &bull; {{ $resident->civil_status_label }}
             </flux:text>
+            @if ($resident->sector_labels)
+                <div class="mt-2 flex flex-wrap gap-1">
+                    @foreach ($resident->sector_labels as $sectorLabel)
+                        <flux:badge size="sm" color="purple">{{ $sectorLabel }}</flux:badge>
+                    @endforeach
+                </div>
+            @endif
         </div>
     </div>
 
@@ -83,11 +90,31 @@ class extends Component {
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-zinc-500">{{ __('Civil Status') }}</dt>
-                    <dd class="font-medium">{{ ucfirst($resident->civil_status) }}</dd>
+                    <dd class="font-medium">{{ $resident->civil_status_label }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-zinc-500">{{ __('Place of Birth') }}</dt>
+                    <dd class="font-medium text-right">{{ $resident->place_of_birth ?? '—' }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-zinc-500">{{ __('Citizenship') }}</dt>
+                    <dd class="font-medium">{{ $resident->citizenship ?? '—' }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-zinc-500">{{ __('Religion') }}</dt>
+                    <dd class="font-medium">{{ $resident->religion ?? '—' }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-zinc-500">{{ __('Blood Type') }}</dt>
+                    <dd class="font-medium">{{ $resident->blood_type ?? '—' }}</dd>
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-zinc-500">{{ __('Contact Number') }}</dt>
                     <dd class="font-medium">{{ $resident->contact_number ?? '—' }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-zinc-500">{{ __('Email') }}</dt>
+                    <dd class="font-medium">{{ $resident->user?->email ?? $resident->email ?? '—' }}</dd>
                 </div>
             </dl>
         </div>
@@ -120,9 +147,17 @@ class extends Component {
 
         {{-- Additional Information --}}
         <div class="rounded-lg border border-zinc-200 p-6 dark:border-zinc-700">
-            <flux:heading size="lg" class="mb-4">{{ __('Additional Information') }}</flux:heading>
+            <flux:heading size="lg" class="mb-4">{{ __('Education & Employment') }}</flux:heading>
 
             <dl class="space-y-4">
+                <div class="flex justify-between">
+                    <dt class="text-zinc-500">{{ __('Educational Attainment') }}</dt>
+                    <dd class="font-medium text-right">{{ $resident->education_label ?? '—' }}</dd>
+                </div>
+                <div class="flex justify-between">
+                    <dt class="text-zinc-500">{{ __('Employment Status') }}</dt>
+                    <dd class="font-medium">{{ $resident->employment_label ?? '—' }}</dd>
+                </div>
                 <div class="flex justify-between">
                     <dt class="text-zinc-500">{{ __('Occupation') }}</dt>
                     <dd class="font-medium">{{ $resident->occupation ?? '—' }}</dd>
@@ -159,6 +194,22 @@ class extends Component {
                     <dt class="text-zinc-500">{{ __('Resident ID') }}</dt>
                     <dd class="font-medium font-mono text-sm">{{ $resident->id }}</dd>
                 </div>
+                <div class="flex justify-between">
+                    <dt class="text-zinc-500">{{ __('Online Account') }}</dt>
+                    <dd>
+                        @if ($resident->user)
+                            <flux:badge size="sm" color="blue">{{ __('Yes') }} · {{ ucfirst($resident->status) }}</flux:badge>
+                        @else
+                            <flux:badge size="sm" color="zinc">{{ __('None (walk-in record)') }}</flux:badge>
+                        @endif
+                    </dd>
+                </div>
+                @if ($resident->is_pwd && $resident->pwd_id_number)
+                    <div class="flex justify-between">
+                        <dt class="text-zinc-500">{{ __('PWD ID No.') }}</dt>
+                        <dd class="font-medium">{{ $resident->pwd_id_number }}</dd>
+                    </div>
+                @endif
                 <div class="flex justify-between">
                     <dt class="text-zinc-500">{{ __('Created At') }}</dt>
                     <dd class="font-medium">{{ $resident->created_at->format('M j, Y g:i A') }}</dd>

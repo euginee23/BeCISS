@@ -9,47 +9,33 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class CertificateDownloadController extends Controller
 {
+    /**
+     * Certificates are only ever issued as PDF, using the issuance details
+     * saved on the record so every reprint matches the original.
+     */
     public function __invoke(Request $request, Certificate $certificate, CertificateDocumentService $service): BinaryFileResponse
     {
-        abort_unless($service->hasTemplate($certificate->type), 404, 'No template available for this certificate type.');
-
         $user = $request->user();
         $isStaffOrAdmin = $user->hasRole(['admin', 'staff']);
         $isOwner = $user->resident && $user->resident->id === $certificate->resident_id;
 
         abort_unless($isStaffOrAdmin || $isOwner, 403);
 
-        $validated = $request->validate([
-            'format' => ['required', 'in:docx,pdf'],
-            'date_of_issuance' => ['required', 'date'],
-            'ctc_no' => ['nullable', 'string', 'max:100'],
-            'ctc_place_issued' => ['nullable', 'string', 'max:200'],
-            'ctc_date_issued' => ['nullable', 'date'],
-        ]);
+        $mayDownload = $isStaffOrAdmin
+            ? $certificate->isPrintable()
+            : $certificate->status === 'completed';
 
-        $certificate->load('resident');
+        abort_unless($mayDownload, 403, 'This certificate is not available for download yet.');
+        abort_unless($service->hasTemplate($certificate->type), 404, 'No template available for this certificate type.');
 
-        $docxPath = $service->generate($certificate, $validated);
+        $certificate->load('resident', 'certificateType');
+
+        $pdfPath = $service->generatePdf($certificate);
 
         $typeLabel = str_replace(' ', '_', $certificate->type_label);
 
-        if ($validated['format'] === 'pdf') {
-            $pdfPath = $service->convertToPdf($docxPath);
-            $service->cleanup($docxPath);
-
-            $filename = "{$typeLabel}_{$certificate->certificate_number}.pdf";
-
-            return response()
-                ->download($pdfPath, $filename, ['Content-Type' => 'application/pdf'])
-                ->deleteFileAfterSend(true);
-        }
-
-        $filename = "{$typeLabel}_{$certificate->certificate_number}.docx";
-
         return response()
-            ->download($docxPath, $filename, [
-                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            ])
+            ->download($pdfPath, "{$typeLabel}_{$certificate->certificate_number}.pdf", ['Content-Type' => 'application/pdf'])
             ->deleteFileAfterSend(true);
     }
 }

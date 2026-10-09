@@ -61,17 +61,17 @@ test('rejecting a resident emails the reason and removes the account', function 
 |--------------------------------------------------------------------------
 */
 
-test('starting processing sends database notification to the resident', function () {
+test('approving a free certificate sends a processing notification to the resident', function () {
     Notification::fake();
 
     $admin = User::factory()->admin()->create();
     $residentUser = User::factory()->resident()->create();
     $resident = Resident::factory()->create(['user_id' => $residentUser->id]);
-    $certificate = Certificate::factory()->create(['resident_id' => $resident->id]);
+    $certificate = Certificate::factory()->indigency()->create(['resident_id' => $resident->id]);
 
     Livewire::actingAs($admin)
         ->test('pages::certificates.show', ['certificate' => $certificate])
-        ->call('startProcessing');
+        ->call('approve');
 
     Notification::assertSentTo($residentUser, ResidentNotification::class, function ($n) {
         return $n->type === 'certificate_processing';
@@ -91,7 +91,10 @@ test('marking ready for pickup sends database notification to the resident', fun
 
     Livewire::actingAs($admin)
         ->test('pages::certificates.show', ['certificate' => $certificate])
-        ->call('markReadyForPickup');
+        ->call('openReadyModal')
+        ->set('ctcNumber', '123')
+        ->set('ctcPlaceIssued', 'Sample City')
+        ->call('markReady');
 
     Notification::assertSentTo($residentUser, ResidentNotification::class, function ($n) {
         return $n->type === 'certificate_ready';
@@ -104,15 +107,13 @@ test('completing a certificate sends database notification to the resident', fun
     $admin = User::factory()->admin()->create();
     $residentUser = User::factory()->resident()->create();
     $resident = Resident::factory()->create(['user_id' => $residentUser->id]);
-    $certificate = Certificate::factory()->create([
+    $certificate = Certificate::factory()->readyForPickup()->create([
         'resident_id' => $resident->id,
-        'status' => 'ready_for_pickup',
     ]);
 
     Livewire::actingAs($admin)
         ->test('pages::certificates.show', ['certificate' => $certificate])
-        ->set('orNumber', 'OR-12345')
-        ->call('completeCertificate');
+        ->call('release');
 
     Notification::assertSentTo($residentUser, ResidentNotification::class, function ($n) {
         return $n->type === 'certificate_completed';

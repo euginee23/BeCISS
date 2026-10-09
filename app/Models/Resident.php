@@ -37,6 +37,77 @@ class Resident extends Model
     ];
 
     /**
+     * @var array<string, string>
+     */
+    public const array CIVIL_STATUSES = [
+        'single' => 'Single',
+        'married' => 'Married',
+        'widowed' => 'Widowed',
+        'separated' => 'Separated',
+        'divorced' => 'Divorced',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    public const array EDUCATION_LEVELS = [
+        'none' => 'No Formal Education',
+        'elementary_undergraduate' => 'Elementary Undergraduate',
+        'elementary_graduate' => 'Elementary Graduate',
+        'high_school_undergraduate' => 'High School Undergraduate',
+        'high_school_graduate' => 'High School Graduate',
+        'senior_high_graduate' => 'Senior High School Graduate',
+        'vocational' => 'Vocational / Technical',
+        'college_undergraduate' => 'College Undergraduate',
+        'college_graduate' => 'College Graduate',
+        'post_graduate' => 'Post Graduate',
+    ];
+
+    /**
+     * @var array<string, string>
+     */
+    public const array EMPLOYMENT_STATUSES = [
+        'employed' => 'Employed',
+        'self_employed' => 'Self-Employed',
+        'unemployed' => 'Unemployed',
+        'student' => 'Student',
+        'retired' => 'Retired',
+        'homemaker' => 'Homemaker',
+    ];
+
+    /**
+     * @var list<string>
+     */
+    public const array BLOOD_TYPES = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+    /**
+     * Stored sector flags, keyed by column. Senior citizens are derived from age.
+     *
+     * @var array<string, string>
+     */
+    public const array SECTORS = [
+        'is_pwd' => 'Person with Disability (PWD)',
+        'is_solo_parent' => 'Solo Parent',
+        'is_4ps_beneficiary' => '4Ps Beneficiary',
+        'is_indigenous' => 'Indigenous People (IP)',
+        'is_ofw' => 'Overseas Filipino Worker (OFW)',
+        'is_out_of_school_youth' => 'Out-of-School Youth',
+    ];
+
+    /**
+     * Age groups used by the registry filters, as [min, max] years.
+     *
+     * @var array<string, array{0: int, 1: ?int}>
+     */
+    public const array AGE_GROUPS = [
+        'minor' => [0, 17],
+        'adult' => [18, 59],
+        'senior' => [60, null],
+    ];
+
+    public const int SENIOR_AGE = 60;
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -48,16 +119,30 @@ class Resident extends Model
         'last_name',
         'suffix',
         'birthdate',
+        'place_of_birth',
         'gender',
         'civil_status',
+        'citizenship',
+        'religion',
+        'blood_type',
         'contact_number',
+        'email',
         'house_number',
         'street',
         'purok',
         'residency_start_date',
+        'educational_attainment',
+        'employment_status',
         'occupation',
         'monthly_income',
         'is_voter',
+        'is_pwd',
+        'pwd_id_number',
+        'is_solo_parent',
+        'is_4ps_beneficiary',
+        'is_indigenous',
+        'is_ofw',
+        'is_out_of_school_youth',
         'household_head_id',
         'profile_photo_path',
         'status',
@@ -76,6 +161,12 @@ class Resident extends Model
             'birthdate' => 'date',
             'monthly_income' => 'decimal:2',
             'is_voter' => 'boolean',
+            'is_pwd' => 'boolean',
+            'is_solo_parent' => 'boolean',
+            'is_4ps_beneficiary' => 'boolean',
+            'is_indigenous' => 'boolean',
+            'is_ofw' => 'boolean',
+            'is_out_of_school_youth' => 'boolean',
             'residency_start_date' => 'date',
             'approved_at' => 'datetime',
         ];
@@ -225,6 +316,76 @@ class Resident extends Model
     public function getAgeAttribute(): ?int
     {
         return $this->birthdate?->age;
+    }
+
+    public function isSenior(): bool
+    {
+        return $this->age !== null && $this->age >= self::SENIOR_AGE;
+    }
+
+    /**
+     * Labels of every sector the resident belongs to, seniors included.
+     *
+     * @return list<string>
+     */
+    public function getSectorLabelsAttribute(): array
+    {
+        $labels = $this->isSenior() ? ['Senior Citizen'] : [];
+
+        foreach (self::SECTORS as $column => $label) {
+            if ($this->{$column}) {
+                $labels[] = $label;
+            }
+        }
+
+        return $labels;
+    }
+
+    public function getCivilStatusLabelAttribute(): string
+    {
+        return self::CIVIL_STATUSES[$this->civil_status] ?? ucfirst((string) $this->civil_status);
+    }
+
+    public function getEducationLabelAttribute(): ?string
+    {
+        return self::EDUCATION_LEVELS[$this->educational_attainment] ?? null;
+    }
+
+    public function getEmploymentLabelAttribute(): ?string
+    {
+        return self::EMPLOYMENT_STATUSES[$this->employment_status] ?? null;
+    }
+
+    /**
+     * Filter by an age group from AGE_GROUPS, using the birthdate.
+     *
+     * @param  Builder<Resident>  $query
+     * @return Builder<Resident>
+     */
+    public function scopeAgeGroup(Builder $query, string $group): Builder
+    {
+        [$min, $max] = self::AGE_GROUPS[$group] ?? [0, null];
+
+        return $query
+            ->whereDate('birthdate', '<=', now()->subYears($min)->toDateString())
+            ->when($max !== null, fn (Builder $query) => $query->whereDate('birthdate', '>', now()->subYears($max + 1)->toDateString()));
+    }
+
+    /**
+     * Filter by a sector key: a SECTORS column, or "senior".
+     *
+     * @param  Builder<Resident>  $query
+     * @return Builder<Resident>
+     */
+    public function scopeInSector(Builder $query, string $sector): Builder
+    {
+        if ($sector === 'senior') {
+            return $query->ageGroup('senior');
+        }
+
+        return array_key_exists($sector, self::SECTORS)
+            ? $query->where($sector, true)
+            : $query;
     }
 
     public function isPending(): bool

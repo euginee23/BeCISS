@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Certificate;
+use App\Services\CertificateWorkflow;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -18,13 +19,11 @@ class extends Component
     #[Url]
     public string $status = '';
 
-    public bool $showExportModal = false;
-    public ?int $exportCertificateId = null;
-    public string $dateOfIssuance = '';
-    public string $ctcNo = '';
-    public string $ctcPlaceIssued = '';
-    public string $ctcDateIssued = '';
-    public string $exportFormat = 'docx';
+    public bool $showCancelModal = false;
+
+    public ?int $cancelCertificateId = null;
+
+    public string $cancellationReason = '';
 
     public function updatedStatus(): void
     {
@@ -47,45 +46,38 @@ class extends Component
         }
 
         return $resident->certificates()
+            ->with([
+                'certificateType',
+                'appointments' => fn ($query) => $query->whereIn('status', ['scheduled', 'confirmed']),
+            ])
             ->when($this->status, fn ($q) => $q->where('status', $this->status))
             ->latest()
             ->paginate(10);
     }
 
-    public function openExportModal(int $certificateId): void
+    public function openCancelModal(int $certificateId): void
     {
-        $this->exportCertificateId = $certificateId;
-        $this->dateOfIssuance = now()->format('Y-m-d');
-        $this->ctcNo = '';
-        $this->ctcPlaceIssued = '';
-        $this->ctcDateIssued = '';
-        $this->exportFormat = 'docx';
-        $this->showExportModal = true;
+        $this->resetValidation();
+        $this->cancelCertificateId = $certificateId;
+        $this->cancellationReason = '';
+        $this->showCancelModal = true;
     }
 
-    public function downloadCertificate(): void
+    public function cancelCertificate(CertificateWorkflow $workflow): void
     {
         $this->validate([
-            'dateOfIssuance' => ['required', 'date'],
-            'ctcNo' => ['nullable', 'string', 'max:100'],
-            'ctcPlaceIssued' => ['nullable', 'string', 'max:200'],
-            'ctcDateIssued' => ['nullable', 'date'],
-            'exportFormat' => ['required', 'in:docx,pdf'],
+            'cancellationReason' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $certificate = Certificate::findOrFail($this->exportCertificateId);
+        $certificate = $this->resident?->certificates()->findOrFail($this->cancelCertificateId);
 
-        $url = route('certificates.download', $certificate).'?'.http_build_query([
-            'format' => $this->exportFormat,
-            'date_of_issuance' => $this->dateOfIssuance,
-            'ctc_no' => $this->ctcNo,
-            'ctc_place_issued' => $this->ctcPlaceIssued,
-            'ctc_date_issued' => $this->ctcDateIssued,
-        ]);
+        abort_unless($certificate, 403);
 
-        $this->showExportModal = false;
+        $workflow->cancel($certificate, auth()->user(), $this->cancellationReason ?: null);
 
-        $this->dispatch('download-certificate', url: $url);
+        $this->showCancelModal = false;
+        $this->cancelCertificateId = null;
+        unset($this->certificates);
     }
 };
 ?>
@@ -135,20 +127,12 @@ class extends Component
                                     <span class="font-mono text-xs text-zinc-400">{{ $cert->certificate_number }}</span>
                                 </div>
                             </div>
-                            <flux:badge :color="match($cert->status) {
-                                'pending' => 'yellow',
-                                'processing' => 'blue',
-                                'ready_for_pickup' => 'lime',
-                                'completed' => 'green',
-                                'rejected' => 'red',
-                                'cancelled' => 'zinc',
-                                default => 'zinc'
-                            }" size="sm" class="shrink-0">{{ $cert->status_label }}</flux:badge>
+                            <flux:badge :color="$cert->status_color" size="sm" class="shrink-0">{{ $cert->status_label }}</flux:badge>
                         </div>
 
                         {{-- Purpose --}}
                         @if($cert->purpose)
-                            <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-3 line-clamp-2">{{ $cert->purpose }}</p>
+                            <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-3 line-clamp-2">{{ $cert->purpose_label }}</p>
                         @endif
 
                         {{-- Details row --}}
@@ -160,13 +144,57 @@ class extends Component
                                 </span>
                                 <span class="flex items-center gap-1.5">
                                     <flux:icon name="banknotes" class="size-4 text-zinc-400" />
-                                    ₱{{ number_format($cert->fee, 2) }}
-                                    @if($cert->is_paid)
-                                        <flux:badge color="green" size="sm">Paid</flux:badge>
+                                    @if ((float) $cert->fee > 0)
+                                        ₱{{ number_format($cert->fee, 2) }}
+                                        @if($cert->is_paid)
+                                            <flux:badge color="green" size="sm">{{ __('Paid') }}</flux:badge>
+                                        @endif
+                                    @else
+                                        {{ __('Free') }}
                                     @endif
                                 </span>
+                                @if ($visit = $cert->appointments->first())
+                                    <span class="flex items-center gap-1.5">
+                                        <flux:icon name="calendar-days" class="size-4 text-zinc-400" />
+                                        {{ __('Visit') }}: {{ $visit->appointment_date->format('M d, Y') }} {{ $visit->appointment_time->format('g:i A') }}
+                                    </span>
+                                @endif
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                @if ($cert->needsVisit() && $cert->appointments->isEmpty())
+                                    <flux:button size="sm" variant="primary" icon="calendar-days" href="{{ route('resident.appointments.create', ['certificate' => $cert->id]) }}" wire:navigate>
+                                        {{ __('Schedule Visit') }}
+                                    </flux:button>
+                                @endif
+                                @if ($cert->status === 'completed')
+                                    <flux:button size="sm" variant="filled" icon="arrow-down-tray" href="{{ route('certificates.download', $cert) }}" target="_blank">
+                                        {{ __('Download PDF') }}
+                                    </flux:button>
+                                @endif
+                                @if ($cert->isCancellable())
+                                    <flux:button size="sm" variant="ghost" wire:click="openCancelModal({{ $cert->id }})">
+                                        {{ __('Cancel') }}
+                                    </flux:button>
+                                @endif
                             </div>
                         </div>
+
+                        @if ($cert->status === 'awaiting_payment')
+                            <flux:callout icon="banknotes" color="orange" class="mt-3">
+                                <flux:callout.text>
+                                    {{ __('Approved. Please pay ₱:amount at the barangay hall to continue. Bring a valid ID.', ['amount' => number_format($cert->fee, 2)]) }}
+                                </flux:callout.text>
+                            </flux:callout>
+                        @elseif ($cert->status === 'ready_for_pickup')
+                            <flux:callout icon="document-check" color="emerald" class="mt-3">
+                                <flux:callout.text>{{ __('Ready for pickup at the barangay hall.') }}</flux:callout.text>
+                            </flux:callout>
+                        @elseif ($cert->status === 'rejected' && $cert->rejection_reason)
+                            <flux:callout icon="x-circle" color="red" class="mt-3">
+                                <flux:callout.text>{{ $cert->rejection_reason }}</flux:callout.text>
+                            </flux:callout>
+                        @endif
                     </div>
                 </div>
             @endforeach
@@ -189,7 +217,7 @@ class extends Component
                         @if($status)
                             No certificates with this status. <button wire:click="$set('status', '')" class="text-emerald-600 hover:underline">Clear filter</button>
                         @else
-                            You haven't requested any certificates yet. Visit the barangay hall to request one.
+                            You haven't requested any certificates yet. Use "Request Certificate" to file one online.
                         @endif
                     </flux:text>
                 </div>
@@ -197,65 +225,26 @@ class extends Component
         </div>
     @endif
 
-    {{-- Export Modal --}}
-    <flux:modal wire:model="showExportModal" class="max-w-sm">
+    {{-- Cancel Modal --}}
+    <flux:modal wire:model="showCancelModal" class="max-w-sm">
         <div class="space-y-6">
             <div>
-                <flux:heading size="lg">{{ __('Download Certificate') }}</flux:heading>
-                <flux:text class="mt-2">
-                    {{ __('Fill in the details below before generating the document.') }}
-                </flux:text>
+                <flux:heading size="lg">{{ __('Cancel Request') }}</flux:heading>
+                <flux:text class="mt-2">{{ __('Are you sure you want to cancel this certificate request?') }}</flux:text>
             </div>
 
             <flux:field>
-                <flux:label>{{ __('Date of Issuance') }} <span class="text-red-500">*</span></flux:label>
-                <flux:input type="date" wire:model="dateOfIssuance" required />
-                <flux:error name="dateOfIssuance" />
+                <flux:label>{{ __('Reason (optional)') }}</flux:label>
+                <flux:textarea wire:model="cancellationReason" rows="3" />
+                <flux:error name="cancellationReason" />
             </flux:field>
 
-            <flux:field>
-                <flux:label>{{ __('CTC No.') }}</flux:label>
-                <flux:input wire:model="ctcNo" placeholder="e.g. 12345678" />
-                <flux:error name="ctcNo" />
-            </flux:field>
-
-            <flux:field>
-                <flux:label>{{ __('CTC Place Issued') }}</flux:label>
-                <flux:input wire:model="ctcPlaceIssued" placeholder="e.g. Municipality of ..." />
-                <flux:error name="ctcPlaceIssued" />
-            </flux:field>
-
-            <flux:field>
-                <flux:label>{{ __('CTC Date Issued') }}</flux:label>
-                <flux:input type="date" wire:model="ctcDateIssued" />
-                <flux:error name="ctcDateIssued" />
-            </flux:field>
-
-            <flux:field>
-                <flux:label>{{ __('Format') }}</flux:label>
-                <flux:radio.group wire:model="exportFormat">
-                    <flux:radio value="docx" label="{{ __('Word Document (.docx)') }}" />
-                    <flux:radio value="pdf" label="{{ __('PDF (.pdf)') }}" />
-                </flux:radio.group>
-                <flux:error name="exportFormat" />
-            </flux:field>
+            <flux:error name="status" />
 
             <div class="flex justify-end gap-2">
-                <flux:button variant="ghost" wire:click="$set('showExportModal', false)">
-                    {{ __('Cancel') }}
-                </flux:button>
-                <flux:button variant="primary" icon="arrow-down-tray" wire:click="downloadCertificate">
-                    {{ __('Generate & Download') }}
-                </flux:button>
+                <flux:button variant="ghost" wire:click="$set('showCancelModal', false)">{{ __('Keep') }}</flux:button>
+                <flux:button variant="danger" wire:click="cancelCertificate">{{ __('Cancel Request') }}</flux:button>
             </div>
         </div>
     </flux:modal>
 </div>
-
-@script
-<script>
-    $wire.on('download-certificate', ({ url }) => {
-        window.open(url, '_blank');
-    });
-</script>
-@endscript

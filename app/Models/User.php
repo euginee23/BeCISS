@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Mail\VerifyEmailCode;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -19,7 +20,7 @@ class User extends Authenticatable implements MustVerifyEmail
     use HasFactory, Notifiable;
 
     /** @var list<string> */
-    public const STAFF_RESOURCES = ['residents', 'certificates', 'appointments', 'blotters'];
+    public const STAFF_RESOURCES = ['residents', 'certificates', 'appointments', 'blotters', 'payments'];
 
     /**
      * The attributes that are mass assignable.
@@ -121,6 +122,20 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         return in_array($resource, $this->permissions ?? [], true);
+    }
+
+    /**
+     * Admins and staff who can work on a resource, for routing notifications.
+     *
+     * @return Collection<int, User>
+     */
+    public static function withPermission(string $resource): Collection
+    {
+        return static::query()
+            ->whereIn('role', ['admin', 'staff'])
+            ->get()
+            ->filter(fn (User $user): bool => $user->hasPermission($resource))
+            ->values();
     }
 
     /**

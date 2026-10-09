@@ -29,8 +29,11 @@ class BlotterDownloadController extends Controller
         $docxPath = $service->generateBlotter($blotter, $validated);
 
         if ($validated['format'] === 'pdf') {
-            $pdfPath = $service->convertToPdf($docxPath);
-            $service->cleanup($docxPath);
+            try {
+                $pdfPath = $service->convertToPdf($docxPath);
+            } finally {
+                $service->cleanup($docxPath);
+            }
 
             $filename = "Blotter_Report_{$blotter->blotter_number}.pdf";
 

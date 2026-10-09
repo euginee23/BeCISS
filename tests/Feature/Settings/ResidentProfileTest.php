@@ -123,3 +123,24 @@ test('resident profile validates civil status values', function () {
 
     $response->assertHasErrors(['civil_status']);
 });
+
+test('resident can update their extended profile details', function () {
+    $user = User::factory()->resident()->create();
+    $resident = Resident::factory()->create(['user_id' => $user->id]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::settings.profile')
+        ->set('place_of_birth', 'Davao City')
+        ->set('religion', 'Roman Catholic')
+        ->set('employment_status', 'self_employed')
+        ->set('is_4ps_beneficiary', true)
+        ->call('updateResidentProfile')
+        ->assertHasNoErrors();
+
+    expect($resident->fresh())
+        ->place_of_birth->toBe('Davao City')
+        ->religion->toBe('Roman Catholic')
+        ->employment_status->toBe('self_employed')
+        ->is_4ps_beneficiary->toBeTrue();
+});

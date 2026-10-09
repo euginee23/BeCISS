@@ -18,6 +18,10 @@ class ResidentNotification extends Notification
     public const array ICONS = [
         'registration_approved' => ['icon' => 'check-circle', 'color' => 'text-emerald-500', 'bg' => 'bg-emerald-100 dark:bg-emerald-900/30'],
         'registration_rejected' => ['icon' => 'x-circle', 'color' => 'text-red-500', 'bg' => 'bg-red-100 dark:bg-red-900/30'],
+        'certificate_requested' => ['icon' => 'document-plus', 'color' => 'text-amber-500', 'bg' => 'bg-amber-100 dark:bg-amber-900/30'],
+        'certificate_approved' => ['icon' => 'banknotes', 'color' => 'text-orange-500', 'bg' => 'bg-orange-100 dark:bg-orange-900/30'],
+        'certificate_paid' => ['icon' => 'receipt-percent', 'color' => 'text-emerald-500', 'bg' => 'bg-emerald-100 dark:bg-emerald-900/30'],
+        'certificate_cancelled' => ['icon' => 'x-circle', 'color' => 'text-zinc-500', 'bg' => 'bg-zinc-100 dark:bg-zinc-800'],
         'certificate_processing' => ['icon' => 'cog-6-tooth', 'color' => 'text-blue-500', 'bg' => 'bg-blue-100 dark:bg-blue-900/30'],
         'certificate_ready' => ['icon' => 'document-check', 'color' => 'text-emerald-500', 'bg' => 'bg-emerald-100 dark:bg-emerald-900/30'],
         'certificate_completed' => ['icon' => 'check-badge', 'color' => 'text-green-600', 'bg' => 'bg-green-100 dark:bg-green-900/30'],

@@ -3,9 +3,12 @@
 use App\Models\ActivityLog;
 use App\Mail\AppointmentScheduled;
 use App\Models\Appointment;
+use App\Models\Service;
 use App\Models\Resident;
 use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -38,7 +41,7 @@ class extends Component
     {
         return [
             'resident_id' => ['required', 'exists:residents,id'],
-            'service_type' => ['required', 'in:'.implode(',', array_keys(Appointment::SERVICE_TYPES))],
+            'service_type' => ['required', Rule::in($this->services->pluck('slug')->all())],
             'description' => ['required', 'string', 'max:1000'],
             'appointment_date' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:'.Appointment::maxBookingDate()],
             'appointment_time' => ['required', 'date_format:H:i'],
@@ -89,6 +92,15 @@ class extends Component
     }
 
     /**
+     * @return Collection<int, Service>
+     */
+    #[Computed]
+    public function services(): Collection
+    {
+        return Service::query()->bookable()->ordered()->get();
+    }
+
+    /**
      * @return list<string>
      */
     #[Computed]
@@ -136,8 +148,8 @@ class extends Component
                     <flux:label>{{ __('Service Type') }} <span class="text-red-500">*</span></flux:label>
                     <flux:select wire:model="service_type" required>
                         <option value="">{{ __('Select service') }}</option>
-                        @foreach (App\Models\Appointment::SERVICE_TYPES as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
+                        @foreach ($this->services as $service)
+                            <option value="{{ $service->slug }}">{{ $service->name }}</option>
                         @endforeach
                     </flux:select>
                     <flux:error name="service_type" />

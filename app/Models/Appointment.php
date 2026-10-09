@@ -7,25 +7,12 @@ use Database\Factories\AppointmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class Appointment extends Model
 {
     /** @use HasFactory<AppointmentFactory> */
     use HasActivityLogs, HasFactory;
-
-    /**
-     * Service types.
-     */
-    public const array SERVICE_TYPES = [
-        'certificate_request' => 'Certificate Request',
-        'complaint' => 'Complaint/Blotter',
-        'mediation' => 'Mediation/Settlement',
-        'business_permit' => 'Business Permit',
-        'health_services' => 'Health Services',
-        'legal_assistance' => 'Legal Assistance',
-        'consultation' => 'Consultation',
-        'other' => 'Other',
-    ];
 
     /**
      * How far ahead an appointment may be booked.
@@ -50,6 +37,7 @@ class Appointment extends Model
      */
     protected $fillable = [
         'resident_id',
+        'certificate_id',
         'handled_by',
         'reference_number',
         'service_type',
@@ -108,7 +96,7 @@ class Appointment extends Model
      */
     public function getServiceTypeLabelAttribute(): string
     {
-        return self::SERVICE_TYPES[$this->service_type] ?? $this->service_type;
+        return $this->service?->name ?? Str::headline($this->service_type);
     }
 
     /**
@@ -160,6 +148,26 @@ class Appointment extends Model
     public function handler(): BelongsTo
     {
         return $this->belongsTo(User::class, 'handled_by');
+    }
+
+    /**
+     * The service this appointment was booked for, including retired ones.
+     *
+     * @return BelongsTo<Service, $this>
+     */
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(Service::class, 'service_type', 'slug')->withTrashed();
+    }
+
+    /**
+     * The certificate this visit is for, when booked to pay for or collect one.
+     *
+     * @return BelongsTo<Certificate, $this>
+     */
+    public function certificate(): BelongsTo
+    {
+        return $this->belongsTo(Certificate::class);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 use App\Models\Appointment;
 use App\Models\Resident;
+use App\Models\Service;
 use App\Models\User;
 use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\Notification;
@@ -65,8 +66,8 @@ test('an appointment already booked beyond the window stays editable', function 
 });
 
 test('building permit is no longer a bookable service type', function () {
-    expect(Appointment::SERVICE_TYPES)->not->toHaveKey('building_permit')
-        ->and(Appointment::SERVICE_TYPES)->toHaveKey('business_permit');
+    expect(Service::labels())->not->toHaveKey('building_permit')
+        ->and(Service::labels())->toHaveKey('business_permit');
 
     Livewire::actingAs(bookableResident())
         ->test('pages::resident.appointments.create')

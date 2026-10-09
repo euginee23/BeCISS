@@ -2,6 +2,7 @@
 
 use App\Models\ActivityLog;
 use App\Models\Blotter;
+use App\Models\Payment;
 use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -74,25 +75,40 @@ class extends Component {
 
     public function completeBlotter(): void
     {
+        abort_unless($this->blotter->status === 'ready_for_pickup', 422);
+
+        $needsPayment = $this->blotter->requiresPayment();
+
         $this->validate([
-            'orNumber' => ['required', 'string', 'max:50'],
+            'orNumber' => [$needsPayment ? 'required' : 'nullable', 'string', 'max:50'],
         ]);
+
+        if ($needsPayment && Payment::orNumberTaken(trim($this->orNumber))) {
+            $this->addError('orNumber', __('This OR number has already been used.'));
+
+            return;
+        }
+
+        if ($needsPayment) {
+            $this->blotter->recordPayment(trim($this->orNumber), Auth::user());
+        }
 
         $this->blotter->update([
             'status' => 'completed',
             'completed_at' => now(),
-            'is_paid' => true,
-            'or_number' => $this->orNumber,
         ]);
 
         $this->showCompleteModal = false;
         $this->blotter->refresh();
         $this->log('completed', 'Released and completed');
-        $this->log(
-            'paid',
-            'Recorded payment of ₱'.number_format((float) $this->blotter->fee, 2).' under OR '.$this->blotter->or_number,
-            ['or_number' => $this->blotter->or_number, 'fee' => (float) $this->blotter->fee],
-        );
+
+        if ($needsPayment) {
+            $this->log(
+                'paid',
+                'Recorded payment of ₱'.number_format((float) $this->blotter->fee, 2).' under OR '.$this->blotter->or_number,
+                ['or_number' => $this->blotter->or_number, 'fee' => (float) $this->blotter->fee],
+            );
+        }
 
         $user = $this->blotter->resident?->user;
         $user?->notify(new ResidentNotification(
@@ -386,15 +402,21 @@ class extends Component {
             <div>
                 <flux:heading size="lg">{{ __('Complete Blotter Report') }}</flux:heading>
                 <flux:text class="mt-2">
-                    {{ __('Enter the Official Receipt number to complete this blotter report.') }}
+                    @if ($blotter->requiresPayment())
+                        {{ __('Enter the Official Receipt number for the ₱:amount fee to complete this blotter report.', ['amount' => number_format($blotter->fee, 2)]) }}
+                    @else
+                        {{ __('No payment is due. Release the blotter report to the resident?') }}
+                    @endif
                 </flux:text>
             </div>
 
-            <flux:field>
-                <flux:label>{{ __('OR Number') }} <span class="text-red-500">*</span></flux:label>
-                <flux:input wire:model="orNumber" placeholder="OR-XXXX-XXXX" required />
-                <flux:error name="orNumber" />
-            </flux:field>
+            @if ($blotter->requiresPayment())
+                <flux:field>
+                    <flux:label>{{ __('OR Number') }} <span class="text-red-500">*</span></flux:label>
+                    <flux:input wire:model="orNumber" placeholder="OR-XXXX-XXXX" required />
+                    <flux:error name="orNumber" />
+                </flux:field>
+            @endif
 
             <div class="flex justify-end gap-2">
                 <flux:button variant="ghost" wire:click="$set('showCompleteModal', false)">

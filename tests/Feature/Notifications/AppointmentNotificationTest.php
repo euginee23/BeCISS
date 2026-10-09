@@ -23,7 +23,7 @@ test('admin scheduling an appointment sends email and notification to resident',
     Livewire::actingAs($admin)
         ->test('pages::appointments.create')
         ->set('resident_id', $resident->id)
-        ->set('service_type', array_key_first(Appointment::SERVICE_TYPES))
+        ->set('service_type', 'consultation')
         ->set('description', 'Test appointment')
         ->set('appointment_date', now()->addDays(3)->toDateString())
         ->set('appointment_time', '10:00')

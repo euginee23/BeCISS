@@ -1,5 +1,6 @@
 <?php
 
+use App\Mail\CertificateApproved;
 use App\Mail\CertificateReadyForPickup;
 use App\Mail\CertificateRejected;
 use App\Models\Certificate;
@@ -21,11 +22,31 @@ test('marking certificate ready for pickup sends email', function () {
 
     Livewire::actingAs($user)
         ->test('pages::certificates.show', ['certificate' => $certificate])
-        ->call('markReadyForPickup');
+        ->call('openReadyModal')
+        ->set('ctcNumber', '123')
+        ->set('ctcPlaceIssued', 'Sample City')
+        ->call('markReady');
 
     Mail::assertSent(CertificateReadyForPickup::class, function ($mail) use ($residentUser) {
         return $mail->hasTo($residentUser->email);
     });
+});
+
+test('approving a paid certificate sends the payment email', function () {
+    Mail::fake();
+
+    $user = User::factory()->create(['role' => 'admin']);
+    $residentUser = User::factory()->create(['role' => 'resident']);
+    $resident = Resident::factory()->create(['user_id' => $residentUser->id]);
+    $certificate = Certificate::factory()->barangayClearance()->create([
+        'resident_id' => $resident->id,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('pages::certificates.show', ['certificate' => $certificate])
+        ->call('approve');
+
+    Mail::assertSent(CertificateApproved::class, fn ($mail) => $mail->hasTo($residentUser->email));
 });
 
 test('rejecting certificate sends rejection email', function () {
@@ -60,7 +81,10 @@ test('no email sent when resident has no linked user', function () {
 
     Livewire::actingAs($user)
         ->test('pages::certificates.show', ['certificate' => $certificate])
-        ->call('markReadyForPickup');
+        ->call('openReadyModal')
+        ->set('ctcNumber', '123')
+        ->set('ctcPlaceIssued', 'Sample City')
+        ->call('markReady');
 
     Mail::assertNothingSent();
 });

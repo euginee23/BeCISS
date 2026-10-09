@@ -209,6 +209,14 @@ class extends Component {
                                 <div class="text-xs text-zinc-500">{{ __('Handle blotter reports') }}</div>
                             </div>
                         </label>
+
+                        <label class="flex items-center gap-3 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4 cursor-pointer {{ $isAdmin ? 'opacity-60' : '' }}">
+                            <flux:checkbox wire:model="permissions" value="payments" :disabled="$isAdmin" />
+                            <div>
+                                <div class="font-medium text-zinc-900 dark:text-white text-sm">{{ __('Payments') }}</div>
+                                <div class="text-xs text-zinc-500">{{ __('Record payments and view collections') }}</div>
+                            </div>
+                        </label>
                     </div>
 
                     <flux:error name="permissions" />

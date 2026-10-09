@@ -96,7 +96,7 @@
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Purpose</span>
-                        <span class="detail-value">{{ $certificate->purpose }}</span>
+                        <span class="detail-value">{{ $certificate->purpose_label }}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Fee</span>
@@ -114,12 +114,14 @@
                         <span class="step-num">1</span>
                         <span class="step-text"><strong>Valid ID</strong> — Bring a valid government-issued identification card.</span>
                     </div>
+                    @if ($certificate->is_paid)
+                        <div class="step">
+                            <span class="step-num">2</span>
+                            <span class="step-text"><strong>Official Receipt</strong> — Bring OR No. {{ $certificate->or_number }} as proof of payment.</span>
+                        </div>
+                    @endif
                     <div class="step">
-                        <span class="step-num">2</span>
-                        <span class="step-text"><strong>Payment</strong> — Prepare the processing fee of &#8369;{{ number_format($certificate->fee, 2) }}.</span>
-                    </div>
-                    <div class="step">
-                        <span class="step-num">3</span>
+                        <span class="step-num">{{ $certificate->is_paid ? 3 : 2 }}</span>
                         <span class="step-text"><strong>Visit the office</strong> — Proceed to the barangay hall during office hours to claim your certificate.</span>
                     </div>
                 </div>

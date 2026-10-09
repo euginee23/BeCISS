@@ -3,7 +3,10 @@
 use App\Models\Appointment;
 use App\Models\Blotter;
 use App\Models\Certificate;
+use App\Models\CertificateType;
+use App\Models\Payment;
 use App\Models\Resident;
+use App\Models\Service;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -85,21 +88,25 @@ class extends Component {
     }
 
     /**
+     * Money received in the period, counted on the day it was paid.
+     *
      * @return array<string, float|int>
      */
     #[Computed]
     public function revenue(): array
     {
-        $certificatesPaid = $this->inRange(Certificate::query())->where('is_paid', true);
-        $blottersPaid = $this->inRange(Blotter::query())->where('is_paid', true);
+        $payments = Payment::query()
+            ->when($this->from, fn ($q, $from) => $q->whereDate('paid_at', '>=', $from))
+            ->when($this->to, fn ($q, $to) => $q->whereDate('paid_at', '<=', $to));
+
+        $openStatuses = fn ($query) => $query->whereNotIn('status', ['rejected', 'cancelled']);
 
         return [
-            'certificates' => (float) (clone $certificatesPaid)->sum('fee'),
-            'blotters' => (float) (clone $blottersPaid)->sum('fee'),
-            'receipts' => (clone $certificatesPaid)->whereNotNull('or_number')->count()
-                + (clone $blottersPaid)->whereNotNull('or_number')->count(),
-            'outstanding' => (float) $this->inRange(Certificate::query())->where('is_paid', false)->sum('fee')
-                + (float) $this->inRange(Blotter::query())->where('is_paid', false)->sum('fee'),
+            'certificates' => (float) (clone $payments)->where('payable_type', Certificate::class)->sum('amount'),
+            'blotters' => (float) (clone $payments)->where('payable_type', Blotter::class)->sum('amount'),
+            'receipts' => (clone $payments)->count(),
+            'outstanding' => (float) $this->inRange(Certificate::query())->where('is_paid', false)->tap($openStatuses)->sum('fee')
+                + (float) $this->inRange(Blotter::query())->where('is_paid', false)->tap($openStatuses)->sum('fee'),
         ];
     }
 
@@ -115,7 +122,7 @@ class extends Component {
             'certificates-by-type' => [
                 'heading' => __('Certificates by type'),
                 'column' => __('Type'),
-                'rows' => $this->countBy($this->inRange(Certificate::query()), 'type', Certificate::TYPES),
+                'rows' => $this->countBy($this->inRange(Certificate::query()), 'type', CertificateType::labels()),
             ],
             'certificates-by-status' => [
                 'heading' => __('Certificates by status'),
@@ -125,7 +132,7 @@ class extends Component {
             'appointments-by-service' => [
                 'heading' => __('Appointments by service'),
                 'column' => __('Service'),
-                'rows' => $this->countBy($this->inRange(Appointment::query()), 'service_type', Appointment::SERVICE_TYPES),
+                'rows' => $this->countBy($this->inRange(Appointment::query()), 'service_type', Service::labels()),
             ],
             'appointments-by-status' => [
                 'heading' => __('Appointments by status'),
@@ -235,7 +242,14 @@ class extends Component {
 
     {{-- Collections --}}
     <div class="mb-6 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 print:break-inside-avoid">
-        <flux:heading size="lg" class="mb-4">{{ __('Collections') }}</flux:heading>
+        <div class="mb-4 flex items-center justify-between gap-4">
+            <flux:heading size="lg">{{ __('Collections') }}</flux:heading>
+            @if (auth()->user()->hasPermission('payments'))
+                <flux:button size="sm" variant="ghost" icon="arrow-top-right-on-square" class="print:hidden" href="{{ route('reports.collections', ['from' => $from, 'to' => $to]) }}" wire:navigate>
+                    {{ __('Collection Report') }}
+                </flux:button>
+            @endif
+        </div>
 
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>

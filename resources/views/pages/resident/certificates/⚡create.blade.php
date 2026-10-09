@@ -1,8 +1,12 @@
 <?php
 
 use App\Models\Certificate;
-use App\Models\ServiceFee;
+use App\Models\CertificatePurpose;
+use App\Models\CertificateType;
+use App\Services\CertificateWorkflow;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -16,19 +20,9 @@ class extends Component
 
     public string $purpose = '';
 
-    public string $remarks = '';
+    public string $purpose_other = '';
 
-    /**
-     * Allowed certificate types for residents.
-     *
-     * @var array<string, string>
-     */
-    public const array ALLOWED_TYPES = [
-        'barangay_clearance' => 'Barangay Clearance',
-        'barangay_certification' => 'Barangay Certification',
-        'certificate_of_residency' => 'Certificate of Residency',
-        'certificate_of_indigency' => 'Certificate of Indigency',
-    ];
+    public string $remarks = '';
 
     /**
      * Validation rules.
@@ -38,29 +32,56 @@ class extends Component
     protected function rules(): array
     {
         return [
-            'type' => ['required', 'in:'.implode(',', array_keys(self::ALLOWED_TYPES))],
-            'purpose' => ['required', Rule::in(Certificate::PURPOSE_OPTIONS)],
+            'type' => ['required', Rule::in($this->types->pluck('slug')->all())],
+            'purpose' => ['required', Rule::in(CertificatePurpose::options())],
+            'purpose_other' => ['nullable', 'string', 'max:255', 'required_if:purpose,'.CertificatePurpose::OTHER],
             'remarks' => ['nullable', 'string', 'max:1000'],
         ];
     }
 
-    public function save(): void
+    public function save(CertificateWorkflow $workflow): void
     {
-        $validated = $this->validate();
+        $this->validate();
 
         $resident = auth()->user()->resident;
 
         abort_unless($resident, 403);
 
-        $validated['resident_id'] = $resident->id;
-        $validated['certificate_number'] = Certificate::generateCertificateNumber();
-        $validated['fee'] = ServiceFee::getFee($validated['type']);
+        $certificate = Certificate::createWithNumber([
+            'resident_id' => $resident->id,
+            'type' => $this->type,
+            'purpose' => $this->purpose,
+            'purpose_other' => $this->purpose === CertificatePurpose::OTHER ? $this->purpose_other : null,
+            'remarks' => $this->remarks ?: null,
+            'fee' => CertificateType::feeFor($this->type),
+        ]);
 
-        Certificate::create($validated);
+        $workflow->submitted($certificate);
 
         session()->flash('status', __('Certificate request submitted successfully.'));
 
         $this->redirect(route('resident.certificates.index'), navigate: true);
+    }
+
+    /**
+     * Types residents may request themselves.
+     *
+     * @return Collection<int, CertificateType>
+     */
+    #[Computed]
+    public function types(): Collection
+    {
+        return CertificateType::query()
+            ->active()
+            ->where('available_to_residents', true)
+            ->ordered()
+            ->get();
+    }
+
+    #[Computed]
+    public function selectedType(): ?CertificateType
+    {
+        return $this->types->firstWhere('slug', $this->type);
     }
 }; ?>
 
@@ -83,10 +104,10 @@ class extends Component
             <div class="grid gap-4 sm:grid-cols-2">
                 <flux:field>
                     <flux:label>{{ __('Certificate Type') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:select wire:model="type" required>
+                    <flux:select wire:model.live="type" required>
                         <option value="">{{ __('Select type') }}</option>
-                        @foreach (self::ALLOWED_TYPES as $key => $label)
-                            <option value="{{ $key }}">{{ $label }}</option>
+                        @foreach ($this->types as $certificateType)
+                            <option value="{{ $certificateType->slug }}">{{ $certificateType->name }}</option>
                         @endforeach
                     </flux:select>
                     <flux:error name="type" />
@@ -94,14 +115,22 @@ class extends Component
 
                 <flux:field>
                     <flux:label>{{ __('Purpose') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:select wire:model="purpose" required>
+                    <flux:select wire:model.live="purpose" required>
                         <option value="">{{ __('Select purpose') }}</option>
-                        @foreach (\App\Models\Certificate::PURPOSE_OPTIONS as $option)
+                        @foreach (CertificatePurpose::options() as $option)
                             <option value="{{ $option }}">{{ $option }}</option>
                         @endforeach
                     </flux:select>
                     <flux:error name="purpose" />
                 </flux:field>
+
+                @if ($purpose === CertificatePurpose::OTHER)
+                    <flux:field class="sm:col-span-2">
+                        <flux:label>{{ __('Specify Purpose') }} <span class="text-red-500">*</span></flux:label>
+                        <flux:input wire:model="purpose_other" placeholder="{{ __('Enter the specific reason') }}" required />
+                        <flux:error name="purpose_other" />
+                    </flux:field>
+                @endif
 
                 <flux:field class="sm:col-span-2">
                     <flux:label>{{ __('Remarks') }}</flux:label>
@@ -112,20 +141,8 @@ class extends Component
         </div>
 
         {{-- Fee Information --}}
-        @if ($type)
-            <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-900/20">
-                <div class="flex items-center gap-3">
-                    <flux:icon name="banknotes" class="size-5 text-emerald-600" />
-                    <div>
-                        <flux:text class="font-medium text-emerald-900 dark:text-emerald-100">
-                            {{ __('Processing Fee') }}
-                        </flux:text>
-                        <flux:text class="text-2xl font-bold text-emerald-600">
-                            ₱{{ number_format(\App\Models\ServiceFee::getFee($type), 2) }}
-                        </flux:text>
-                    </div>
-                </div>
-            </div>
+        @if ($this->selectedType)
+            <x-certificate-type-summary :type="$this->selectedType" />
         @endif
 
         {{-- Form Actions --}}

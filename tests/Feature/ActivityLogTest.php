@@ -64,18 +64,22 @@ test('a rejection is still logged after the resident is deleted', function () {
 test('certificate transitions are each attributed', function () {
     Mail::fake();
 
-    $certificate = Certificate::factory()->create(['status' => 'pending']);
+    $certificate = Certificate::factory()->barangayClearance()->create(['status' => 'pending']);
 
     Livewire::actingAs($this->admin)
         ->test('pages::certificates.show', ['certificate' => $certificate])
-        ->call('startProcessing')
-        ->call('markReadyForPickup')
+        ->call('approve')
         ->set('orNumber', 'OR-9911')
-        ->call('completeCertificate');
+        ->call('recordPayment')
+        ->call('openReadyModal')
+        ->set('ctcNumber', '123')
+        ->set('ctcPlaceIssued', 'Sample City')
+        ->call('markReady')
+        ->call('release');
 
     $actions = ActivityLog::where('module', 'certificates')->pluck('action')->all();
 
-    expect($actions)->toContain('processing', 'ready', 'completed', 'paid');
+    expect($actions)->toContain('approved', 'paid', 'ready', 'completed');
 
     $payment = ActivityLog::where('action', 'paid')->first();
     expect($payment->properties['or_number'])->toBe('OR-9911')
@@ -118,7 +122,7 @@ test('appointment cancellation is attributed', function () {
 });
 
 test('blotter completion is attributed', function () {
-    $blotter = Blotter::factory()->create(['status' => 'processing']);
+    $blotter = Blotter::factory()->create(['status' => 'ready_for_pickup']);
 
     Livewire::actingAs($this->admin)
         ->test('pages::blotters.show', ['blotter' => $blotter])
@@ -133,11 +137,11 @@ test('blotter completion is attributed', function () {
 test('records expose their own activity timeline', function () {
     Mail::fake();
 
-    $certificate = Certificate::factory()->create(['status' => 'pending']);
+    $certificate = Certificate::factory()->barangayClearance()->create(['status' => 'pending']);
 
     Livewire::actingAs($this->admin)
         ->test('pages::certificates.show', ['certificate' => $certificate])
-        ->call('startProcessing');
+        ->call('approve');
 
     expect($certificate->fresh()->activityLogs)->toHaveCount(1);
 });

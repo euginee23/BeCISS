@@ -50,18 +50,7 @@ class extends Component
 
         $this->showEditModal = false;
         $this->editingFeeId = null;
-        unset($this->certificateFees, $this->blotterFees);
-    }
-
-    #[Computed]
-    public function certificateFees()
-    {
-        $order = array_keys(ServiceFee::CERTIFICATE_SERVICES);
-
-        return ServiceFee::whereIn('service_type', $order)
-            ->get()
-            ->sortBy(fn ($fee) => array_search($fee->service_type, $order))
-            ->values();
+        unset($this->blotterFees);
     }
 
     #[Computed]
@@ -80,50 +69,16 @@ class extends Component
     <div>
         <flux:heading size="xl">{{ __('Service Fees') }}</flux:heading>
         <flux:text class="text-zinc-500 dark:text-zinc-400 mt-1">
-            {{ __('Set the processing fees charged for certificates and blotter reports.') }}
+            {{ __('Set the processing fees charged for blotter reports.') }}
         </flux:text>
     </div>
 
-    {{-- Certificates --}}
-    <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 flex flex-col gap-5">
-        <div class="flex items-center gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800">
-            <div class="size-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <flux:icon name="document-text" class="size-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-                <flux:heading>{{ __('Certificates') }}</flux:heading>
-                <flux:text class="text-sm text-zinc-500">{{ __('Fees applied when a certificate of each type is requested.') }}</flux:text>
-            </div>
-        </div>
-
-        <flux:table>
-            <flux:table.columns>
-                <flux:table.column>{{ __('Certificate Type') }}</flux:table.column>
-                <flux:table.column>{{ __('Fee') }}</flux:table.column>
-                <flux:table.column>{{ __('Status') }}</flux:table.column>
-                <flux:table.column></flux:table.column>
-            </flux:table.columns>
-
-            <flux:table.rows>
-                @foreach($this->certificateFees as $fee)
-                    <flux:table.row :key="$fee->id">
-                        <flux:table.cell variant="strong">{{ $fee->label }}</flux:table.cell>
-                        <flux:table.cell class="font-mono">₱{{ number_format($fee->fee, 2) }}</flux:table.cell>
-                        <flux:table.cell>
-                            <flux:badge size="sm" :color="$fee->is_active ? 'green' : 'zinc'">
-                                {{ $fee->is_active ? __('Active') : __('Inactive') }}
-                            </flux:badge>
-                        </flux:table.cell>
-                        <flux:table.cell>
-                            <flux:button variant="ghost" size="sm" icon="pencil" wire:click="openEditModal({{ $fee->id }})">
-                                {{ __('Edit') }}
-                            </flux:button>
-                        </flux:table.cell>
-                    </flux:table.row>
-                @endforeach
-            </flux:table.rows>
-        </flux:table>
-    </div>
+    <flux:callout icon="information-circle" color="blue">
+        <flux:callout.text>
+            {{ __('Certificate fees are set per certificate type.') }}
+            <flux:link href="{{ route('admin.settings.certificate-types') }}" wire:navigate>{{ __('Manage certificate types') }}</flux:link>
+        </flux:callout.text>
+    </flux:callout>
 
     {{-- Blotter --}}
     <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 flex flex-col gap-5">

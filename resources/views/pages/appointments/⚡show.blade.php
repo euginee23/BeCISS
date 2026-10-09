@@ -6,6 +6,7 @@ use App\Mail\AppointmentConfirmed;
 use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Notifications\ResidentNotification;
+use App\Services\CertificateWorkflow;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Layout;
@@ -27,13 +28,53 @@ class extends Component
 
     public string $completionNotes = '';
 
+    public bool $showPaymentModal = false;
+
+    public string $orNumber = '';
+
     public function mount(Appointment $appointment): void
     {
-        $this->appointment = $appointment->load('resident', 'handler');
+        $this->appointment = $appointment->load('resident', 'handler', 'certificate.certificateType');
+    }
+
+    public function openPaymentModal(): void
+    {
+        $this->resetValidation();
+        $this->orNumber = '';
+        $this->showPaymentModal = true;
+    }
+
+    /**
+     * Take payment for the linked certificate during the visit.
+     */
+    public function recordCertificatePayment(CertificateWorkflow $workflow): void
+    {
+        abort_unless($this->appointment->certificate && Auth::user()->hasPermission('payments'), 403);
+
+        $this->validate(['orNumber' => ['required', 'string', 'max:50']]);
+
+        $workflow->recordPayment($this->appointment->certificate, trim($this->orNumber), Auth::user());
+
+        $this->showPaymentModal = false;
+        $this->appointment->refresh()->load('resident', 'handler', 'certificate.certificateType');
+    }
+
+    /**
+     * Release the linked certificate, which also completes this visit.
+     */
+    public function releaseCertificate(CertificateWorkflow $workflow): void
+    {
+        abort_unless($this->appointment->certificate && Auth::user()->hasPermission('certificates'), 403);
+
+        $workflow->release($this->appointment->certificate);
+
+        $this->appointment->refresh()->load('resident', 'handler', 'certificate.certificateType');
     }
 
     public function confirmAppointment(): void
     {
+        abort_unless($this->appointment->status === 'scheduled', 422);
+
         $this->appointment->update([
             'status' => 'confirmed',
             'handled_by' => Auth::id(),
@@ -56,6 +97,8 @@ class extends Component
 
     public function completeAppointment(): void
     {
+        abort_unless(in_array($this->appointment->status, ['scheduled', 'confirmed'], true), 422);
+
         $notes = $this->appointment->notes;
         if ($this->completionNotes) {
             $notes = $notes ? $notes."\n\nCompletion: ".$this->completionNotes : $this->completionNotes;
@@ -81,6 +124,8 @@ class extends Component
 
     public function markNoShow(): void
     {
+        abort_unless($this->appointment->status === 'confirmed', 422);
+
         $this->appointment->update([
             'status' => 'no_show',
             'handled_by' => Auth::id(),
@@ -102,6 +147,8 @@ class extends Component
 
     public function cancelAppointment(): void
     {
+        abort_unless(in_array($this->appointment->status, ['scheduled', 'confirmed'], true), 422);
+
         $this->appointment->update([
             'status' => 'cancelled',
             'cancelled_at' => now(),
@@ -250,6 +297,46 @@ class extends Component
             </dl>
         </div>
 
+        {{-- Linked Certificate --}}
+        @if ($certificate = $appointment->certificate)
+            <div class="rounded-lg border border-blue-200 bg-blue-50/50 p-6 dark:border-blue-900 dark:bg-blue-900/10 lg:col-span-2">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <flux:heading size="lg">{{ __('Certificate for this visit') }}</flux:heading>
+                        <flux:text class="mt-1">
+                            {{ $certificate->type_label }} ·
+                            <span class="font-mono">{{ $certificate->certificate_number }}</span>
+                        </flux:text>
+                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                            <flux:badge size="sm" :color="$certificate->status_color">{{ $certificate->status_label }}</flux:badge>
+                            @if ((float) $certificate->fee > 0)
+                                <flux:badge size="sm" :color="$certificate->is_paid ? 'emerald' : 'amber'">
+                                    ₱{{ number_format($certificate->fee, 2) }} · {{ $certificate->is_paid ? __('Paid (OR :or)', ['or' => $certificate->or_number]) : __('Unpaid') }}
+                                </flux:badge>
+                            @else
+                                <flux:badge size="sm" color="zinc">{{ __('Free') }}</flux:badge>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        @if ($certificate->status === 'awaiting_payment' && auth()->user()->hasPermission('payments'))
+                            <flux:button variant="primary" icon="banknotes" wire:click="openPaymentModal">{{ __('Record Payment') }}</flux:button>
+                        @endif
+                        @if ($certificate->status === 'ready_for_pickup' && auth()->user()->hasPermission('certificates'))
+                            <flux:button variant="primary" icon="hand-raised" wire:click="releaseCertificate" wire:confirm="{{ __('Release the certificate and complete this visit?') }}">{{ __('Release Certificate') }}</flux:button>
+                        @endif
+                        @if (auth()->user()->hasPermission('certificates'))
+                            <flux:button variant="ghost" icon="arrow-top-right-on-square" href="{{ route('certificates.show', $certificate) }}" wire:navigate>
+                                {{ $certificate->status === 'processing' ? __('Prepare Certificate') : __('Open Certificate') }}
+                            </flux:button>
+                        @endif
+                    </div>
+                </div>
+                <flux:error name="status" class="mt-3" />
+            </div>
+        @endif
+
         {{-- Description --}}
         <div class="rounded-lg border border-zinc-200 p-6 dark:border-zinc-700">
             <flux:heading size="lg" class="mb-4">{{ __('Description') }}</flux:heading>
@@ -281,6 +368,31 @@ class extends Component
             </div>
         @endif
     </div>
+
+    {{-- Payment Modal --}}
+    <flux:modal wire:model="showPaymentModal" class="max-w-sm">
+        <form wire:submit="recordCertificatePayment" class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Record Payment') }}</flux:heading>
+                @if ($appointment->certificate)
+                    <flux:text class="mt-2">{{ __('Amount due') }}: <strong>₱{{ number_format($appointment->certificate->fee, 2) }}</strong></flux:text>
+                @endif
+            </div>
+
+            <flux:field>
+                <flux:label>{{ __('OR Number') }} <span class="text-red-500">*</span></flux:label>
+                <flux:input wire:model="orNumber" placeholder="OR-XXXX-XXXX" required />
+                <flux:error name="orNumber" />
+            </flux:field>
+
+            <flux:error name="status" />
+
+            <div class="flex justify-end gap-2">
+                <flux:button variant="ghost" wire:click="$set('showPaymentModal', false)">{{ __('Cancel') }}</flux:button>
+                <flux:button type="submit" variant="primary">{{ __('Record Payment') }}</flux:button>
+            </div>
+        </form>
+    </flux:modal>
 
     {{-- Complete Modal --}}
     <flux:modal wire:model="showCompleteModal" class="max-w-sm">

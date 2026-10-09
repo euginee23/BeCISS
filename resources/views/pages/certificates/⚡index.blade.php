@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\ActivityLog;
 use App\Models\Certificate;
+use App\Services\CertificateWorkflow;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -30,9 +30,11 @@ class extends Component {
     #[Url]
     public string $sortDirection = 'desc';
 
-    public bool $showDeleteModal = false;
+    public bool $showCancelModal = false;
 
-    public ?int $certificateToDelete = null;
+    public ?int $certificateToCancel = null;
+
+    public string $cancellationReason = '';
 
     public function sort(string $column): void
     {
@@ -59,38 +61,33 @@ class extends Component {
         $this->resetPage();
     }
 
-    public function confirmDelete(int $id): void
+    public function confirmCancel(int $id): void
     {
-        $this->certificateToDelete = $id;
-        $this->showDeleteModal = true;
+        $this->resetValidation();
+        $this->certificateToCancel = $id;
+        $this->cancellationReason = '';
+        $this->showCancelModal = true;
     }
 
-    public function deleteCertificate(): void
+    public function cancelCertificate(CertificateWorkflow $workflow): void
     {
-        if ($this->certificateToDelete) {
-            $certificate = Certificate::find($this->certificateToDelete);
+        $this->validate([
+            'cancellationReason' => ['nullable', 'string', 'max:500'],
+        ]);
 
-            if ($certificate) {
-                ActivityLog::record(
-                    module: 'certificates',
-                    action: 'deleted',
-                    subject: $certificate,
-                    description: 'Deleted '.$certificate->type_label.' request ('.$certificate->certificate_number.').',
-                );
+        $certificate = Certificate::findOrFail($this->certificateToCancel);
 
-                $certificate->delete();
-            }
+        $workflow->cancel($certificate, auth()->user(), $this->cancellationReason ?: null);
 
-            $this->showDeleteModal = false;
-            $this->certificateToDelete = null;
-        }
+        $this->showCancelModal = false;
+        $this->certificateToCancel = null;
     }
 
     #[Computed]
     public function certificates()
     {
         return Certificate::query()
-            ->with('resident')
+            ->with('resident', 'certificateType')
             ->when($this->search, fn ($query, $search) => $query->where(function ($sub) use ($search) {
                 $sub->where('certificate_number', 'like', "%{$search}%")
                     ->orWhere('purpose', 'like', "%{$search}%")
@@ -102,7 +99,10 @@ class extends Component {
             }))
             ->when($this->status, fn ($query, $status) => $query->where('status', $status))
             ->when($this->type, fn ($query, $type) => $query->where('type', $type))
-            ->orderBy($this->sortBy, $this->sortDirection)
+            ->orderBy(
+                in_array($this->sortBy, ['certificate_number', 'type', 'status', 'created_at'], true) ? $this->sortBy : 'created_at',
+                $this->sortDirection === 'asc' ? 'asc' : 'desc',
+            )
             ->paginate(10);
     }
 }; ?>
@@ -136,7 +136,7 @@ class extends Component {
 
         <flux:select wire:model.live="type" class="max-w-xs">
             <option value="">{{ __('All Types') }}</option>
-            @foreach (App\Models\Certificate::TYPES as $key => $label)
+            @foreach (App\Models\CertificateType::labels() as $key => $label)
                 <option value="{{ $key }}">{{ $label }}</option>
             @endforeach
         </flux:select>
@@ -190,14 +190,14 @@ class extends Component {
                                 <flux:menu.item icon="eye" href="{{ route('certificates.show', $certificate) }}">
                                     {{ __('View') }}
                                 </flux:menu.item>
-                                @if (in_array($certificate->status, ['pending', 'processing']))
+                                @if ($certificate->isEditable())
                                     <flux:menu.item icon="pencil" href="{{ route('certificates.edit', $certificate) }}">
                                         {{ __('Edit') }}
                                     </flux:menu.item>
                                 @endif
                                 <flux:menu.separator />
-                                @if ($certificate->status === 'pending')
-                                    <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $certificate->id }})">
+                                @if ($certificate->isCancellable())
+                                    <flux:menu.item icon="x-circle" variant="danger" wire:click="confirmCancel({{ $certificate->id }})">
                                         {{ __('Cancel') }}
                                     </flux:menu.item>
                                 @endif
@@ -223,21 +223,29 @@ class extends Component {
         </flux:table.rows>
     </flux:table>
 
-    {{-- Delete Confirmation Modal --}}
-    <flux:modal wire:model="showDeleteModal" class="max-w-sm">
+    {{-- Cancel Confirmation Modal --}}
+    <flux:modal wire:model="showCancelModal" class="max-w-sm">
         <div class="space-y-6">
             <div>
                 <flux:heading size="lg">{{ __('Cancel Request') }}</flux:heading>
                 <flux:text class="mt-2">
-                    {{ __('Are you sure you want to cancel this certificate request? This action cannot be undone.') }}
+                    {{ __('The request is kept on record as cancelled and the resident is notified.') }}
                 </flux:text>
             </div>
 
+            <flux:field>
+                <flux:label>{{ __('Reason') }}</flux:label>
+                <flux:textarea wire:model="cancellationReason" rows="3" />
+                <flux:error name="cancellationReason" />
+            </flux:field>
+
+            <flux:error name="status" />
+
             <div class="flex justify-end gap-2">
-                <flux:button variant="ghost" wire:click="$set('showDeleteModal', false)">
+                <flux:button variant="ghost" wire:click="$set('showCancelModal', false)">
                     {{ __('Keep') }}
                 </flux:button>
-                <flux:button variant="danger" wire:click="deleteCertificate">
+                <flux:button variant="danger" wire:click="cancelCertificate">
                     {{ __('Cancel Request') }}
                 </flux:button>
             </div>

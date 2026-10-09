@@ -18,12 +18,10 @@ class AppointmentFactory extends Factory
      */
     public function definition(): array
     {
-        $serviceTypes = array_keys(Appointment::SERVICE_TYPES);
-
         return [
             'resident_id' => Resident::factory(),
             'reference_number' => Appointment::generateReferenceNumber(),
-            'service_type' => fake()->randomElement($serviceTypes),
+            'service_type' => fake()->randomElement(['complaint', 'mediation', 'business_permit', 'health_services', 'legal_assistance', 'consultation', 'other']),
             'description' => fake()->sentence(10),
             'appointment_date' => fake()->dateTimeBetween('now', '+'.Appointment::MAX_ADVANCE_DAYS.' days'),
             'appointment_time' => fake()->time('H:i:00'),

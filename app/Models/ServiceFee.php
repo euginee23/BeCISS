@@ -12,19 +12,6 @@ class ServiceFee extends Model
     use HasFactory;
 
     /**
-     * All hard-coded service types that fees can be configured for.
-     * Certificate types map to Certificate::TYPES keys.
-     *
-     * @var array<string, string>
-     */
-    public const array CERTIFICATE_SERVICES = [
-        'barangay_clearance' => 'Barangay Clearance',
-        'barangay_certification' => 'Barangay Certification',
-        'certificate_of_residency' => 'Certificate of Residency',
-        'certificate_of_indigency' => 'Certificate of Indigency',
-    ];
-
-    /**
      * @var array<string, string>
      */
     public const array BLOTTER_SERVICES = [
@@ -34,12 +21,12 @@ class ServiceFee extends Model
     /**
      * Ensure every predefined service type has a fee record in the database.
      * Creates missing records with a default fee of ₱0.00 (active).
+     *
+     * Certificate fees live on certificate_types, so only blotter fees are synced.
      */
     public static function sync(): void
     {
-        $all = array_merge(static::CERTIFICATE_SERVICES, static::BLOTTER_SERVICES);
-
-        foreach ($all as $type => $label) {
+        foreach (static::BLOTTER_SERVICES as $type => $label) {
             static::firstOrCreate(
                 ['service_type' => $type],
                 ['label' => $label, 'fee' => 0.00, 'is_active' => true],

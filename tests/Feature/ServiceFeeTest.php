@@ -34,35 +34,20 @@ test('getFee returns zero for unknown service type', function () {
     expect(ServiceFee::getFee('nonexistent_service'))->toBe(0.00);
 });
 
-test('sync creates all predefined service fee records', function () {
+test('sync creates only the blotter fee record', function () {
     ServiceFee::sync();
 
-    $expectedTypes = [
-        'barangay_clearance',
-        'barangay_certification',
-        'certificate_of_residency',
-        'certificate_of_indigency',
-        'blotter',
-    ];
-
-    expect(ServiceFee::whereIn('service_type', $expectedTypes)->count())->toBe(5);
-
-    foreach (array_keys(ServiceFee::CERTIFICATE_SERVICES) as $type) {
-        $this->assertDatabaseHas('service_fees', ['service_type' => $type]);
-    }
-
-    foreach (array_keys(ServiceFee::BLOTTER_SERVICES) as $type) {
-        $this->assertDatabaseHas('service_fees', ['service_type' => $type]);
-    }
+    $this->assertDatabaseHas('service_fees', ['service_type' => 'blotter']);
+    $this->assertDatabaseMissing('service_fees', ['service_type' => 'barangay_clearance']);
 });
 
 test('sync does not overwrite existing fee amounts', function () {
     ServiceFee::sync();
-    ServiceFee::where('service_type', 'barangay_clearance')->update(['fee' => 150.00]);
+    ServiceFee::where('service_type', 'blotter')->update(['fee' => 150.00]);
 
     ServiceFee::sync();
 
-    expect(ServiceFee::where('service_type', 'barangay_clearance')->value('fee'))->toBe('150.00');
+    expect(ServiceFee::where('service_type', 'blotter')->value('fee'))->toBe('150.00');
 });
 
 /*
@@ -90,7 +75,7 @@ test('non-admin cannot access service fees page', function () {
 test('admin can update a service fee amount', function () {
     $user = User::factory()->admin()->create();
     ServiceFee::sync();
-    $fee = ServiceFee::where('service_type', 'barangay_clearance')->firstOrFail();
+    $fee = ServiceFee::where('service_type', 'blotter')->firstOrFail();
 
     Livewire::actingAs($user)
         ->test('pages::admin.settings.service-fees')
@@ -125,7 +110,7 @@ test('admin can deactivate a service fee', function () {
 test('fee amount is required and must be numeric', function () {
     $user = User::factory()->admin()->create();
     ServiceFee::sync();
-    $fee = ServiceFee::where('service_type', 'barangay_certification')->firstOrFail();
+    $fee = ServiceFee::where('service_type', 'blotter')->firstOrFail();
 
     Livewire::actingAs($user)
         ->test('pages::admin.settings.service-fees')

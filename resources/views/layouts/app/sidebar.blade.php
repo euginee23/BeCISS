@@ -45,9 +45,14 @@
                         {{ __('Blotters') }}
                     </flux:sidebar.item>
                     @endif
-                    <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.*')" wire:navigate>
+                    <flux:sidebar.item icon="chart-bar" :href="route('reports.index')" :current="request()->routeIs('reports.index')" wire:navigate>
                         {{ __('Reports') }}
                     </flux:sidebar.item>
+                    @if(auth()->user()->hasPermission('payments'))
+                    <flux:sidebar.item icon="banknotes" :href="route('reports.collections')" :current="request()->routeIs('reports.collections')" wire:navigate>
+                        {{ __('Collection Report') }}
+                    </flux:sidebar.item>
+                    @endif
                 </flux:sidebar.group>
                 @endif
 
@@ -58,6 +63,15 @@
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="building-office-2" :href="route('admin.settings.barangay')" :current="request()->routeIs('admin.settings.barangay')" wire:navigate>
                         {{ __('Barangay Settings') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="squares-2x2" :href="route('admin.settings.services')" :current="request()->routeIs('admin.settings.services')" wire:navigate>
+                        {{ __('Services') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="document-duplicate" :href="route('admin.settings.certificate-types')" :current="request()->routeIs('admin.settings.certificate-types')" wire:navigate>
+                        {{ __('Certificate Types') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="list-bullet" :href="route('admin.settings.purposes')" :current="request()->routeIs('admin.settings.purposes')" wire:navigate>
+                        {{ __('Purposes') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="banknotes" :href="route('admin.settings.service-fees')" :current="request()->routeIs('admin.settings.service-fees')" wire:navigate>
                         {{ __('Service Fees') }}

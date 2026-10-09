@@ -85,7 +85,7 @@
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Purpose</span>
-                        <span class="detail-value">{{ $certificate->purpose }}</span>
+                        <span class="detail-value">{{ $certificate->purpose_label }}</span>
                     </div>
                     <div class="detail-row">
                         <span class="detail-label">Status</span>

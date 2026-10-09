@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Certificate;
+use App\Models\CertificateType;
 use App\Models\Resident;
 use App\Models\User;
 use Livewire\Livewire;
@@ -135,41 +136,104 @@ describe('certificates show', function () {
 });
 
 describe('certificates workflow', function () {
-    it('can start processing a pending certificate', function () {
-        $certificate = Certificate::factory()->create(['status' => 'pending']);
+    it('approves a paid certificate into awaiting payment', function () {
+        $certificate = Certificate::factory()->barangayClearance()->create(['status' => 'pending']);
 
         Livewire::actingAs($this->admin)
             ->test('pages::certificates.show', ['certificate' => $certificate])
-            ->call('startProcessing');
+            ->call('approve');
+
+        expect($certificate->fresh())
+            ->status->toBe('awaiting_payment')
+            ->approved_at->not->toBeNull();
+    });
+
+    it('approves a free certificate straight into processing', function () {
+        $certificate = Certificate::factory()->indigency()->create(['status' => 'pending']);
+
+        Livewire::actingAs($this->admin)
+            ->test('pages::certificates.show', ['certificate' => $certificate])
+            ->call('approve');
 
         $certificate->refresh();
         expect($certificate->status)->toBe('processing')
             ->and($certificate->processed_by)->toBe($this->admin->id);
     });
 
-    it('can mark certificate ready for pickup', function () {
-        $certificate = Certificate::factory()->processing()->create();
+    it('records payment and starts processing', function () {
+        $certificate = Certificate::factory()->awaitingPayment()->create();
 
         Livewire::actingAs($this->admin)
             ->test('pages::certificates.show', ['certificate' => $certificate])
-            ->call('markReadyForPickup');
+            ->call('openPaymentModal')
+            ->set('orNumber', 'OR-2024-0001')
+            ->call('recordPayment')
+            ->assertHasNoErrors();
 
         $certificate->refresh();
-        expect($certificate->status)->toBe('ready_for_pickup');
+        expect($certificate->status)->toBe('processing')
+            ->and($certificate->is_paid)->toBeTrue()
+            ->and($certificate->or_number)->toBe('OR-2024-0001')
+            ->and($certificate->latestPayment)
+            ->amount->toBe('50.00')
+            ->received_by->toBe($this->admin->id);
     });
 
-    it('can complete a certificate', function () {
+    it('can mark certificate ready for pickup with issuance details', function () {
+        $certificate = Certificate::factory()->residency()->processing()->create();
+
+        Livewire::actingAs($this->admin)
+            ->test('pages::certificates.show', ['certificate' => $certificate])
+            ->call('openReadyModal')
+            ->set('issuedAt', '2026-10-01')
+            ->set('ctcNumber', '12345678')
+            ->set('ctcPlaceIssued', 'Municipality of Sample')
+            ->set('ctcDateIssued', '2026-01-15')
+            ->call('markReady')
+            ->assertHasNoErrors();
+
+        $certificate->refresh();
+        expect($certificate->status)->toBe('ready_for_pickup')
+            ->and($certificate->issued_at->toDateString())->toBe('2026-10-01')
+            ->and($certificate->ctc_number)->toBe('12345678');
+    });
+
+    it('requires ctc fields only for types that need them', function () {
+        $certificate = Certificate::factory()->residency()->processing()->create();
+
+        Livewire::actingAs($this->admin)
+            ->test('pages::certificates.show', ['certificate' => $certificate])
+            ->call('openReadyModal')
+            ->set('ctcNumber', '')
+            ->set('ctcPlaceIssued', '')
+            ->set('ctcDateIssued', '')
+            ->call('markReady')
+            ->assertHasErrors(['ctcNumber', 'ctcPlaceIssued', 'ctcDateIssued']);
+
+        CertificateType::where('slug', 'certificate_of_residency')->update(['requires_ctc' => false]);
+
+        Livewire::actingAs($this->admin)
+            ->test('pages::certificates.show', ['certificate' => $certificate])
+            ->call('openReadyModal')
+            ->set('ctcNumber', '')
+            ->set('ctcPlaceIssued', '')
+            ->set('ctcDateIssued', '')
+            ->call('markReady')
+            ->assertHasNoErrors();
+
+        expect($certificate->fresh()->status)->toBe('ready_for_pickup');
+    });
+
+    it('can release a certificate', function () {
         $certificate = Certificate::factory()->readyForPickup()->create();
 
         Livewire::actingAs($this->admin)
             ->test('pages::certificates.show', ['certificate' => $certificate])
-            ->set('orNumber', 'OR-2024-0001')
-            ->call('completeCertificate');
+            ->call('release');
 
         $certificate->refresh();
         expect($certificate->status)->toBe('completed')
-            ->and($certificate->is_paid)->toBeTrue()
-            ->and($certificate->or_number)->toBe('OR-2024-0001');
+            ->and($certificate->completed_at)->not->toBeNull();
     });
 
     it('can reject a certificate', function () {
@@ -185,18 +249,19 @@ describe('certificates workflow', function () {
             ->and($certificate->rejection_reason)->toBe('Incomplete requirements');
     });
 
-    it('requires ctc fields before exporting certificate', function () {
-        $certificate = Certificate::factory()->processing()->create();
+    it('can cancel from the index without deleting the record', function () {
+        $certificate = Certificate::factory()->create(['status' => 'pending']);
 
         Livewire::actingAs($this->admin)
-            ->test('pages::certificates.show', ['certificate' => $certificate])
-            ->set('dateOfIssuance', now()->format('Y-m-d'))
-            ->set('ctcNo', '')
-            ->set('ctcPlaceIssued', '')
-            ->set('ctcDateIssued', '')
-            ->set('exportFormat', 'docx')
-            ->call('downloadCertificate')
-            ->assertHasErrors(['ctcNo', 'ctcPlaceIssued', 'ctcDateIssued']);
+            ->test('pages::certificates.index')
+            ->call('confirmCancel', $certificate->id)
+            ->set('cancellationReason', 'Duplicate request')
+            ->call('cancelCertificate')
+            ->assertHasNoErrors();
+
+        expect($certificate->fresh())
+            ->status->toBe('cancelled')
+            ->cancelled_at->not->toBeNull();
     });
 });
 

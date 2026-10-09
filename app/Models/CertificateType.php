@@ -3,11 +3,13 @@
 namespace App\Models;
 
 use Database\Factories\CertificateTypeFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class CertificateType extends Model
 {
@@ -23,6 +25,7 @@ class CertificateType extends Model
         'slug',
         'name',
         'description',
+        'requirements',
         'fee',
         'is_active',
         'available_to_residents',
@@ -56,20 +59,14 @@ class CertificateType extends Model
      * Every type keyed by slug, including retired ones so historical
      * certificates still resolve a label.
      *
-     * Falls back to the shipped constant when the table has not been seeded,
-     * which keeps factories and tests working without a seeded database.
-     *
      * @return array<string, string>
      */
     public static function labels(): array
     {
-        $labels = static::withTrashed()
-            ->orderBy('sort_order')
-            ->orderBy('name')
+        return static::withTrashed()
+            ->ordered()
             ->pluck('name', 'slug')
             ->all();
-
-        return $labels ?: Certificate::TYPES;
     }
 
     /**
@@ -79,14 +76,11 @@ class CertificateType extends Model
      */
     public static function activeLabels(): array
     {
-        $labels = static::query()
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('name')
+        return static::query()
+            ->active()
+            ->ordered()
             ->pluck('name', 'slug')
             ->all();
-
-        return $labels ?: Certificate::TYPES;
     }
 
     /**
@@ -96,35 +90,22 @@ class CertificateType extends Model
      */
     public static function residentLabels(): array
     {
-        $labels = static::query()
-            ->where('is_active', true)
+        return static::query()
+            ->active()
             ->where('available_to_residents', true)
-            ->orderBy('sort_order')
-            ->orderBy('name')
+            ->ordered()
             ->pluck('name', 'slug')
             ->all();
-
-        return $labels ?: Certificate::TYPES;
     }
 
     /**
-     * The fee charged for a type, falling back to the legacy service fee
-     * catalogue so unseeded databases keep returning the old amounts.
+     * The fee charged for an active type, or zero for unknown and retired ones.
      */
     public static function feeFor(string $slug): float
     {
-        $type = static::query()
-            ->where('slug', $slug)
-            ->where('is_active', true)
-            ->first();
+        $type = static::query()->active()->where('slug', $slug)->first();
 
-        if ($type) {
-            return (float) $type->fee;
-        }
-
-        return static::query()->where('slug', $slug)->exists()
-            ? 0.00
-            : ServiceFee::getFee($slug);
+        return $type ? (float) $type->fee : 0.00;
     }
 
     /**
@@ -132,13 +113,52 @@ class CertificateType extends Model
      */
     public static function requiresCtc(string $slug): bool
     {
-        $type = static::withTrashed()->where('slug', $slug)->first();
+        return (bool) static::withTrashed()->where('slug', $slug)->value('requires_ctc');
+    }
 
-        /**
-         * Unseeded databases keep the shipped behaviour, where every type
-         * collected CTC details.
-         */
-        return $type ? $type->requires_ctc : array_key_exists($slug, Certificate::TYPES);
+    /**
+     * Build a unique slug from a type name.
+     */
+    public static function slugFor(string $name, ?int $ignoreId = null): string
+    {
+        $base = Str::limit(Str::snake(Str::lower(preg_replace('/[^A-Za-z0-9 ]+/', ' ', $name))), 90, '') ?: 'certificate';
+        $slug = $base;
+        $suffix = 2;
+
+        while (static::withTrashed()
+            ->where('slug', $slug)
+            ->when($ignoreId, fn (Builder $query) => $query->whereKeyNot($ignoreId))
+            ->exists()) {
+            $slug = $base.'_'.$suffix++;
+        }
+
+        return $slug;
+    }
+
+    /**
+     * @param  Builder<CertificateType>  $query
+     * @return Builder<CertificateType>
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * @param  Builder<CertificateType>  $query
+     * @return Builder<CertificateType>
+     */
+    public function scopeOrdered(Builder $query): Builder
+    {
+        return $query->orderBy('sort_order')->orderBy('name');
+    }
+
+    /**
+     * Whether a fee must be collected before the certificate is processed.
+     */
+    public function isFree(): bool
+    {
+        return (float) $this->fee <= 0;
     }
 
     /**
