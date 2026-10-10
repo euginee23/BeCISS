@@ -7,26 +7,28 @@ window.addEventListener('error', (e) => {
     }
 });
 
-// Livewire navigate syncs <html> element attributes from the server response, which does
-// not include the `dark` class applied by Flux via JavaScript. This causes a brief flash
-// of light mode before livewire:navigated re-applies the class. The MutationObserver
-// below re-applies dark mode as a microtask (before the next browser paint) whenever
-// the class is stripped during navigation.
-document.addEventListener('livewire:navigate', () => {
-    const observer = new MutationObserver(() => {
-        const stored = localStorage.getItem('flux.appearance');
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const shouldBeDark = stored === 'dark' || (!stored && prefersDark);
+// Keep the `dark` class on <html> in step with the saved Flux appearance. wire:navigate
+// copies the server's <html> attributes over the page, and the server never sends the class
+// Flux adds in the browser; back/forward restores snapshots taken in whichever mode was
+// active then. The observer stays connected for the whole visit because the progress bar
+// also rewrites the class mid-navigation. Corrections run as a microtask, before the next
+// paint, and only when the class disagrees, so the observer cannot loop.
+const syncAppearance = () => {
+    const stored = localStorage.getItem('flux.appearance');
+    const shouldBeDark = stored === 'dark'
+        || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
-        if (shouldBeDark) {
-            document.documentElement.classList.add('dark');
-        }
+    if (document.documentElement.classList.contains('dark') !== shouldBeDark) {
+        document.documentElement.classList.toggle('dark', shouldBeDark);
+    }
+};
 
-        observer.disconnect();
-    });
-
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-});
+// Only pages that run @fluxAppearance (which defines window.Flux in <head>) follow the
+// saved appearance; the public welcome page stays as designed.
+if (window.Flux) {
+    new MutationObserver(syncAppearance).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    document.addEventListener('livewire:navigated', syncAppearance);
+}
 
 // x-capitalize: upper-cases the first letter of every word as the user types, so names and
 // street lines are entered consistently. Mirrors the server-side CapitalizesWords trait,
