@@ -33,6 +33,7 @@ class ActivityLog extends Model
         'created' => 'Created',
         'updated' => 'Updated',
         'deleted' => 'Deleted',
+        'imported' => 'Imported',
         'approved' => 'Approved',
         'rejected' => 'Rejected',
         'processing' => 'Started Processing',

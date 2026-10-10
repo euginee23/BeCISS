@@ -259,11 +259,11 @@ class extends Component {
                 <dl class="space-y-3">
                     <div class="flex justify-between">
                         <dt class="text-zinc-500">{{ __('Age') }}</dt>
-                        <dd class="font-medium">{{ $certificate->resident->age }} {{ __('years old') }}</dd>
+                        <dd class="font-medium">{{ $certificate->resident->age !== null ? $certificate->resident->age.' '.__('years old') : '—' }}</dd>
                     </div>
                     <div class="flex justify-between">
                         <dt class="text-zinc-500">{{ __('Gender') }}</dt>
-                        <dd class="font-medium">{{ ucfirst($certificate->resident->gender) }}</dd>
+                        <dd class="font-medium">{{ $certificate->resident->gender ? ucfirst($certificate->resident->gender) : '—' }}</dd>
                     </div>
                     <div class="flex justify-between">
                         <dt class="text-zinc-500">{{ __('Contact') }}</dt>

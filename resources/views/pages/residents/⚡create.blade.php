@@ -30,6 +30,7 @@ class extends Component {
     public string $occupation = '';
     public ?float $monthly_income = null;
     public bool $is_voter = false;
+    public string $precinct_number = '';
     public ?int $household_head_id = null;
 
     /**
@@ -56,6 +57,7 @@ class extends Component {
             'occupation' => ['nullable', 'string', 'max:255'],
             'monthly_income' => ['nullable', 'numeric', 'min:0'],
             'is_voter' => ['boolean'],
+            'precinct_number' => ['nullable', 'string', 'max:20'],
             'household_head_id' => ['nullable', 'exists:residents,id'],
             ...$this->residentDetailRules(),
         ];
@@ -73,6 +75,7 @@ class extends Component {
             ...$validated,
             ...$this->residentDetailAttributes(),
             'email' => $this->email ?: null,
+            'precinct_number' => $this->precinct_number ?: null,
             'status' => 'approved',
             'approved_at' => now(),
         ]);
@@ -219,9 +222,15 @@ class extends Component {
                 <flux:error name="monthly_income" />
             </flux:field>
 
-            <div class="sm:col-span-2">
+            <div class="flex items-center">
                 <flux:checkbox wire:model="is_voter" label="{{ __('Registered Voter') }}" />
             </div>
+
+            <flux:field>
+                <flux:label>{{ __('Precinct No.') }}</flux:label>
+                <flux:input wire:model="precinct_number" placeholder="{{ __('e.g. 86B') }}" />
+                <flux:error name="precinct_number" />
+            </flux:field>
         </x-resident-detail-fields>
 
         {{-- Form Actions --}}

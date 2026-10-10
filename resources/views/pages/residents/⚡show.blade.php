@@ -13,7 +13,7 @@ class extends Component {
 
     public function mount(Resident $resident): void
     {
-        $this->resident = $resident->load('user');
+        $this->resident = $resident->load(['user', 'householdHead', 'householdMembers']);
     }
 }; ?>
 
@@ -33,7 +33,11 @@ class extends Component {
         <div>
             <flux:heading size="xl">{{ $resident->full_name }}</flux:heading>
             <flux:text class="text-zinc-500">
-                {{ $resident->age }} {{ __('years old') }} &bull; {{ ucfirst($resident->gender) }} &bull; {{ $resident->civil_status_label }}
+                {{ collect([
+                    $resident->age !== null ? $resident->age.' '.__('years old') : null,
+                    $resident->gender ? ucfirst($resident->gender) : null,
+                    $resident->civil_status_label,
+                ])->filter()->implode(' • ') }}
             </flux:text>
             @if ($resident->sector_labels)
                 <div class="mt-2 flex flex-wrap gap-1">
@@ -44,6 +48,13 @@ class extends Component {
             @endif
         </div>
     </div>
+
+    @if ($resident->isIncomplete())
+        <flux:callout variant="warning" icon="exclamation-triangle" class="mb-6">
+            <flux:callout.heading>{{ __('Incomplete profile') }}</flux:callout.heading>
+            <flux:callout.text>{{ __('This record is missing a birthdate or gender, so it is left out of age and sector reports. Edit the resident to complete it.') }}</flux:callout.text>
+        </flux:callout>
+    @endif
 
     <div class="grid gap-6 lg:grid-cols-2">
         {{-- Personal Information --}}
@@ -74,18 +85,22 @@ class extends Component {
                 <flux:separator />
                 <div class="flex justify-between">
                     <dt class="text-zinc-500">{{ __('Birthdate') }}</dt>
-                    <dd class="font-medium">{{ $resident->birthdate->format('F j, Y') }}</dd>
+                    <dd class="font-medium">{{ $resident->birthdate?->format('F j, Y') ?? '—' }}</dd>
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-zinc-500">{{ __('Age') }}</dt>
-                    <dd class="font-medium">{{ $resident->age }} {{ __('years old') }}</dd>
+                    <dd class="font-medium">{{ $resident->age !== null ? $resident->age.' '.__('years old') : '—' }}</dd>
                 </div>
                 <div class="flex justify-between">
                     <dt class="text-zinc-500">{{ __('Gender') }}</dt>
                     <dd>
-                        <flux:badge size="sm" :color="$resident->gender === 'male' ? 'blue' : 'pink'">
-                            {{ ucfirst($resident->gender) }}
-                        </flux:badge>
+                        @if ($resident->gender)
+                            <flux:badge size="sm" :color="$resident->gender === 'male' ? 'blue' : 'pink'">
+                                {{ ucfirst($resident->gender) }}
+                            </flux:badge>
+                        @else
+                            <span class="font-medium">—</span>
+                        @endif
                     </dd>
                 </div>
                 <div class="flex justify-between">
@@ -182,8 +197,45 @@ class extends Component {
                         @endif
                     </dd>
                 </div>
+                <div class="flex justify-between">
+                    <dt class="text-zinc-500">{{ __('Precinct No.') }}</dt>
+                    <dd class="font-medium">{{ $resident->precinct_number ?? '—' }}</dd>
+                </div>
             </dl>
         </div>
+
+        {{-- Household --}}
+        @if ($resident->householdHead || $resident->householdMembers->isNotEmpty())
+            <div class="rounded-lg border border-zinc-200 p-6 dark:border-zinc-700">
+                <flux:heading size="lg" class="mb-4">{{ __('Household') }}</flux:heading>
+
+                <dl class="space-y-4">
+                    @if ($resident->householdHead)
+                        <div class="flex justify-between">
+                            <dt class="text-zinc-500">{{ __('Household Head') }}</dt>
+                            <dd class="font-medium">
+                                <flux:link href="{{ route('residents.show', $resident->householdHead) }}" wire:navigate>{{ $resident->householdHead->full_name }}</flux:link>
+                            </dd>
+                        </div>
+                    @else
+                        <div class="flex justify-between">
+                            <dt class="text-zinc-500">{{ __('Role') }}</dt>
+                            <dd class="font-medium">{{ __('Household Head') }}</dd>
+                        </div>
+                        <div class="flex justify-between gap-4">
+                            <dt class="text-zinc-500">{{ __('Members') }}</dt>
+                            <dd class="space-y-1 text-right font-medium">
+                                @foreach ($resident->householdMembers as $member)
+                                    <div wire:key="member-{{ $member->id }}">
+                                        <flux:link href="{{ route('residents.show', $member) }}" wire:navigate>{{ $member->full_name }}</flux:link>
+                                    </div>
+                                @endforeach
+                            </dd>
+                        </div>
+                    @endif
+                </dl>
+            </div>
+        @endif
 
         {{-- System Information --}}
         <div class="rounded-lg border border-zinc-200 p-6 dark:border-zinc-700">

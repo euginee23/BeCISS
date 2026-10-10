@@ -100,6 +100,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::middleware(['permission:residents'])->group(function () {
                 Route::livewire('residents', 'pages::residents.index')->name('residents.index');
                 Route::livewire('residents/create', 'pages::residents.create')->name('residents.create');
+                Route::livewire('residents/import', 'pages::residents.import')->name('residents.import');
                 Route::livewire('residents/{resident}', 'pages::residents.show')->name('residents.show');
                 Route::livewire('residents/{resident}/edit', 'pages::residents.edit')->name('residents.edit');
             });

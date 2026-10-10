@@ -33,6 +33,7 @@ class ResidentFactory extends Factory
             'occupation' => fake()->optional(0.7)->jobTitle(),
             'monthly_income' => fake()->optional(0.6)->randomFloat(2, 5000, 100000),
             'is_voter' => fake()->boolean(70),
+            'precinct_number' => fake()->optional(0.5)->regexify('8[6-8][A-C]'),
             'place_of_birth' => fake()->optional(0.7)->city(),
             'citizenship' => 'Filipino',
             'religion' => fake()->optional(0.7)->randomElement(['Roman Catholic', 'Iglesia ni Cristo', 'Islam', 'Born Again Christian']),
@@ -115,6 +116,17 @@ class ResidentFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'is_solo_parent' => true,
+        ]);
+    }
+
+    /**
+     * An imported record still missing its birthdate and gender.
+     */
+    public function incomplete(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'birthdate' => null,
+            'gender' => null,
         ]);
     }
 

@@ -32,6 +32,7 @@ class extends Component {
     public string $occupation = '';
     public ?float $monthly_income = null;
     public bool $is_voter = false;
+    public string $precinct_number = '';
     public ?int $household_head_id = null;
 
     public function mount(Resident $resident): void
@@ -41,8 +42,8 @@ class extends Component {
         $this->middle_name = $resident->middle_name ?? '';
         $this->last_name = $resident->last_name;
         $this->suffix = $resident->suffix ?? '';
-        $this->birthdate = $resident->birthdate->format('Y-m-d');
-        $this->gender = $resident->gender;
+        $this->birthdate = $resident->birthdate?->format('Y-m-d') ?? '';
+        $this->gender = $resident->gender ?? '';
         $this->civil_status = $resident->civil_status;
         $this->contact_number = $resident->contact_number ?? '';
         $this->email = $resident->email ?? '';
@@ -53,6 +54,7 @@ class extends Component {
         $this->occupation = $resident->occupation ?? '';
         $this->monthly_income = $resident->monthly_income;
         $this->is_voter = $resident->is_voter;
+        $this->precinct_number = $resident->precinct_number ?? '';
         $this->household_head_id = $resident->household_head_id;
         $this->fillResidentDetails($resident);
     }
@@ -81,6 +83,7 @@ class extends Component {
             'occupation' => ['nullable', 'string', 'max:255'],
             'monthly_income' => ['nullable', 'numeric', 'min:0'],
             'is_voter' => ['boolean'],
+            'precinct_number' => ['nullable', 'string', 'max:20'],
             'household_head_id' => ['nullable', 'exists:residents,id'],
             ...$this->residentDetailRules(),
         ];
@@ -94,6 +97,7 @@ class extends Component {
             ...$validated,
             ...$this->residentDetailAttributes(),
             'email' => $this->email ?: null,
+            'precinct_number' => $this->precinct_number ?: null,
         ]);
 
         ActivityLog::record(
@@ -238,9 +242,15 @@ class extends Component {
                 <flux:error name="monthly_income" />
             </flux:field>
 
-            <div class="sm:col-span-2">
+            <div class="flex items-center">
                 <flux:checkbox wire:model="is_voter" label="{{ __('Registered Voter') }}" />
             </div>
+
+            <flux:field>
+                <flux:label>{{ __('Precinct No.') }}</flux:label>
+                <flux:input wire:model="precinct_number" placeholder="{{ __('e.g. 86B') }}" />
+                <flux:error name="precinct_number" />
+            </flux:field>
         </x-resident-detail-fields>
 
         {{-- Form Actions --}}

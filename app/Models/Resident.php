@@ -34,6 +34,13 @@ class Resident extends Model
         'Purok 8',
         'Purok 9',
         'Purok 10',
+        'Purok Santan',
+        'Purok Sunflower',
+        'Purok Bombil',
+        'Purok Gumamela',
+        'Purok Sampaguita',
+        'Purok Rose',
+        'Purok Manan-Aw',
     ];
 
     /**
@@ -136,6 +143,7 @@ class Resident extends Model
         'occupation',
         'monthly_income',
         'is_voter',
+        'precinct_number',
         'is_pwd',
         'pwd_id_number',
         'is_solo_parent',
@@ -386,6 +394,24 @@ class Resident extends Model
         return array_key_exists($sector, self::SECTORS)
             ? $query->where($sector, true)
             : $query;
+    }
+
+    /**
+     * Whether the record still lacks the birthdate or gender, as imported
+     * household lists often do.
+     */
+    public function isIncomplete(): bool
+    {
+        return $this->birthdate === null || $this->gender === null;
+    }
+
+    /**
+     * @param  Builder<Resident>  $query
+     * @return Builder<Resident>
+     */
+    public function scopeIncomplete(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $query) => $query->whereNull('birthdate')->orWhereNull('gender'));
     }
 
     public function isPending(): bool

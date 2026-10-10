@@ -93,8 +93,8 @@ class extends Component {
             $this->middle_name = $resident->middle_name ?? '';
             $this->last_name = $resident->last_name;
             $this->suffix = $resident->suffix ?? '';
-            $this->birthdate = $resident->birthdate->format('Y-m-d');
-            $this->gender = $resident->gender;
+            $this->birthdate = $resident->birthdate?->format('Y-m-d') ?? '';
+            $this->gender = $resident->gender ?? '';
             $this->civil_status = $resident->civil_status;
             $this->contact_number = $resident->contact_number ?? '';
             $this->house_number = $resident->house_number ?? '';

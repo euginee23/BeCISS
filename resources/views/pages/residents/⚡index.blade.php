@@ -48,6 +48,9 @@ class extends Component {
     public string $account = '';
 
     #[Url]
+    public string $profile = '';
+
+    #[Url]
     public string $sortBy = 'last_name';
 
     #[Url]
@@ -83,21 +86,21 @@ class extends Component {
      */
     public function updated(string $property): void
     {
-        if (in_array($property, ['purok', 'gender', 'civilStatus', 'ageGroup', 'voter', 'sector', 'account'], true)) {
+        if (in_array($property, ['purok', 'gender', 'civilStatus', 'ageGroup', 'voter', 'sector', 'account', 'profile'], true)) {
             $this->resetPage();
         }
     }
 
     public function clearFilters(): void
     {
-        $this->reset('search', 'purok', 'gender', 'civilStatus', 'ageGroup', 'voter', 'sector', 'account');
+        $this->reset('search', 'purok', 'gender', 'civilStatus', 'ageGroup', 'voter', 'sector', 'account', 'profile');
         $this->resetPage();
     }
 
     #[Computed]
     public function hasFilters(): bool
     {
-        return (bool) ($this->search || $this->purok || $this->gender || $this->civilStatus || $this->ageGroup || $this->voter || $this->sector || $this->account);
+        return (bool) ($this->search || $this->purok || $this->gender || $this->civilStatus || $this->ageGroup || $this->voter || $this->sector || $this->account || $this->profile);
     }
 
     public function updatedTab(): void
@@ -249,6 +252,7 @@ class extends Component {
                 ->when($this->sector, fn ($q) => $q->inSector($this->sector))
                 ->when($this->account === 'with', fn ($q) => $q->whereNotNull('user_id'))
                 ->when($this->account === 'without', fn ($q) => $q->whereNull('user_id'))
+                ->when($this->profile === 'incomplete', fn ($q) => $q->incomplete())
             )
             ->orderBy(
                 in_array($this->sortBy, ['last_name', 'birthdate', 'purok', 'created_at'], true) ? $this->sortBy : 'last_name',
@@ -266,10 +270,19 @@ class extends Component {
             <flux:text class="mt-1 text-zinc-500">{{ __('Registry of all barangay residents, with or without an online account') }}</flux:text>
         </div>
 
-        <flux:button variant="primary" icon="plus" href="{{ route('residents.create') }}">
-            {{ __('Add Resident') }}
-        </flux:button>
+        <div class="flex gap-2">
+            <flux:button icon="arrow-up-tray" href="{{ route('residents.import') }}">
+                {{ __('Import') }}
+            </flux:button>
+            <flux:button variant="primary" icon="plus" href="{{ route('residents.create') }}">
+                {{ __('Add Resident') }}
+            </flux:button>
+        </div>
     </div>
+
+    @if (session('status'))
+        <flux:callout variant="success" icon="check-circle" class="mb-4" :heading="session('status')" />
+    @endif
 
     {{-- Tabs --}}
     <div class="mb-4 flex items-center gap-4 border-b border-zinc-200 dark:border-zinc-700">
@@ -352,6 +365,11 @@ class extends Component {
                 <option value="without">{{ __('No online account') }}</option>
             </flux:select>
 
+            <flux:select wire:model.live="profile" class="max-w-44">
+                <option value="">{{ __('Any profile') }}</option>
+                <option value="incomplete">{{ __('Incomplete profile') }}</option>
+            </flux:select>
+
             @if ($this->hasFilters)
                 <flux:button variant="ghost" size="sm" icon="x-mark" wire:click="clearFilters">{{ __('Clear') }}</flux:button>
             @endif
@@ -394,11 +412,17 @@ class extends Component {
                 <div class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                     <div>
                         <span class="text-zinc-500 dark:text-zinc-400">{{ __('Gender') }}</span>
-                        <p class="font-medium text-zinc-900 dark:text-white">{{ ucfirst($resident->gender) }}</p>
+                        <p class="font-medium text-zinc-900 dark:text-white">{{ $resident->gender ? ucfirst($resident->gender) : '—' }}</p>
                     </div>
                     <div>
                         <span class="text-zinc-500 dark:text-zinc-400">{{ __('Birthdate') }}</span>
-                        <p class="font-medium text-zinc-900 dark:text-white">{{ $resident->birthdate->format('M d, Y') }} ({{ $resident->age }} yrs)</p>
+                        <p class="font-medium text-zinc-900 dark:text-white">
+                            @if ($resident->birthdate)
+                                {{ $resident->birthdate->format('M d, Y') }} ({{ $resident->age }} yrs)
+                            @else
+                                —
+                            @endif
+                        </p>
                     </div>
                     <div>
                         <span class="text-zinc-500 dark:text-zinc-400">{{ __('Civil Status') }}</span>
@@ -457,7 +481,12 @@ class extends Component {
                         <div class="flex items-center gap-3">
                             <flux:avatar size="xs" name="{{ $resident->full_name }}" />
                             <div>
-                                <div>{{ $resident->full_name }}</div>
+                                <div class="flex items-center gap-2">
+                                    {{ $resident->full_name }}
+                                    @if ($resident->isIncomplete())
+                                        <flux:badge size="sm" color="amber">{{ __('Incomplete') }}</flux:badge>
+                                    @endif
+                                </div>
                                 <div class="text-xs text-zinc-500">
                                     {{ $resident->civil_status_label }}
                                     @foreach ($resident->sector_labels as $sectorLabel)
@@ -467,11 +496,15 @@ class extends Component {
                             </div>
                         </div>
                     </flux:table.cell>
-                    <flux:table.cell>{{ $resident->age }} {{ __('yrs') }}</flux:table.cell>
+                    <flux:table.cell>{{ $resident->age !== null ? $resident->age.' '.__('yrs') : '—' }}</flux:table.cell>
                     <flux:table.cell>
-                        <flux:badge size="sm" :color="$resident->gender === 'male' ? 'blue' : 'pink'">
-                            {{ ucfirst($resident->gender) }}
-                        </flux:badge>
+                        @if ($resident->gender)
+                            <flux:badge size="sm" :color="$resident->gender === 'male' ? 'blue' : 'pink'">
+                                {{ ucfirst($resident->gender) }}
+                            </flux:badge>
+                        @else
+                            —
+                        @endif
                     </flux:table.cell>
                     <flux:table.cell>
                         <div class="max-w-xs truncate">
