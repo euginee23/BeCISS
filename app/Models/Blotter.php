@@ -122,13 +122,13 @@ class Blotter extends Model
     }
 
     /**
-     * Get the resident that filed the blotter.
+     * Get the resident that filed the blotter, including deleted ones.
      *
      * @return BelongsTo<Resident, $this>
      */
     public function resident(): BelongsTo
     {
-        return $this->belongsTo(Resident::class);
+        return $this->belongsTo(Resident::class)->withTrashed();
     }
 
     /**

@@ -171,13 +171,13 @@ class Certificate extends Model
     }
 
     /**
-     * Get the resident that owns the certificate.
+     * Get the resident that owns the certificate, including deleted ones.
      *
      * @return BelongsTo<Resident, $this>
      */
     public function resident(): BelongsTo
     {
-        return $this->belongsTo(Resident::class);
+        return $this->belongsTo(Resident::class)->withTrashed();
     }
 
     /**
