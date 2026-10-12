@@ -3,6 +3,7 @@
 use App\Mail\AppointmentCancelled;
 use App\Models\ActivityLog;
 use App\Models\Appointment;
+use App\Models\Service;
 use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Attributes\Computed;
@@ -24,8 +25,23 @@ class extends Component {
     #[Url]
     public string $status = '';
 
+    /**
+     * A service slug, or empty for every service.
+     */
     #[Url]
-    public string $date = '';
+    public string $service = '';
+
+    /**
+     * "today", "week", "month", "year", "custom", or empty for every date.
+     */
+    #[Url]
+    public string $period = '';
+
+    #[Url]
+    public string $from = '';
+
+    #[Url]
+    public string $to = '';
 
     /**
      * Default to booking order: whoever booked first is dealt with first.
@@ -52,9 +68,42 @@ class extends Component {
         }
     }
 
-    public function updatedSearch(): void
+    public function updated(string $property): void
     {
-        $this->resetPage();
+        if (in_array($property, ['search', 'status', 'service', 'period', 'from', 'to'], true)) {
+            $this->resetPage();
+        }
+    }
+
+    /**
+     * Dates arrive from the URL and the date inputs, so anything that is not
+     * a real Y-m-d date is ignored rather than allowed to break the page.
+     */
+    private function validDate(?string $value): ?string
+    {
+        if (! $value || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) || ! checkdate((int) substr($value, 5, 2), (int) substr($value, 8, 2), (int) substr($value, 0, 4))) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * The first and last appointment dates the chosen period covers; either
+     * end is null when it is open.
+     *
+     * @return array{0: ?string, 1: ?string}
+     */
+    private function dateRange(): array
+    {
+        return match ($this->period) {
+            'today' => [now()->toDateString(), now()->toDateString()],
+            'week' => [now()->startOfWeek()->toDateString(), now()->endOfWeek()->toDateString()],
+            'month' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+            'year' => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
+            'custom' => [$this->validDate($this->from), $this->validDate($this->to)],
+            default => [null, null],
+        };
     }
 
     public function confirmCancel(int $id): void
@@ -107,20 +156,35 @@ class extends Component {
     #[Computed]
     public function appointments()
     {
+        [$start, $end] = $this->dateRange();
+
         return Appointment::query()
-            ->with('resident')
-            ->when($this->search, fn ($query, $search) => $query
+            ->with(['resident', 'service'])
+            ->when($this->search, fn ($query, $search) => $query->where(fn ($query) => $query
                 ->where('reference_number', 'like', "%{$search}%")
                 ->orWhere('description', 'like', "%{$search}%")
                 ->orWhereHas('resident', fn ($q) => $q
                     ->where('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%")
                 )
-            )
+            ))
             ->when($this->status, fn ($query, $status) => $query->where('status', $status))
-            ->when($this->date, fn ($query, $date) => $query->whereDate('appointment_date', $date))
+            ->when($this->service, fn ($query, $service) => $query->where('service_type', $service))
+            ->when($start, fn ($query, $start) => $query->whereDate('appointment_date', '>=', $start))
+            ->when($end, fn ($query, $end) => $query->whereDate('appointment_date', '<=', $end))
             ->orderBy($this->sortBy, $this->sortDirection)
             ->paginate(10);
+    }
+
+    /**
+     * Every service an appointment may have been booked under, including retired ones.
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function services(): array
+    {
+        return Service::labels();
     }
 
     #[Computed]
@@ -170,22 +234,44 @@ class extends Component {
         </div>
     </div>
 
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <flux:input
             wire:model.live.debounce.300ms="search"
             icon="magnifying-glass"
             placeholder="{{ __('Search appointments...') }}"
-            class="max-w-xs"
+            class="sm:max-w-xs"
         />
 
-        <flux:select wire:model.live="status" class="max-w-xs">
+        <flux:select wire:model.live="status" class="sm:max-w-44">
             <option value="">{{ __('All Status') }}</option>
             @foreach (App\Models\Appointment::STATUSES as $key => $label)
                 <option value="{{ $key }}">{{ $label }}</option>
             @endforeach
         </flux:select>
 
-        <flux:input wire:model.live="date" type="date" class="max-w-xs" />
+        <flux:select wire:model.live="service" class="sm:max-w-56">
+            <option value="">{{ __('All Services') }}</option>
+            @foreach ($this->services as $slug => $label)
+                <option value="{{ $slug }}">{{ $label }}</option>
+            @endforeach
+        </flux:select>
+
+        <flux:select wire:model.live="period" class="sm:max-w-44">
+            <option value="">{{ __('All Dates') }}</option>
+            <option value="today">{{ __('Today') }}</option>
+            <option value="week">{{ __('This Week') }}</option>
+            <option value="month">{{ __('This Month') }}</option>
+            <option value="year">{{ __('This Year') }}</option>
+            <option value="custom">{{ __('Custom Date') }}</option>
+        </flux:select>
+
+        @if ($period === 'custom')
+            <div class="flex items-center gap-2">
+                <flux:input wire:model.live="from" type="date" aria-label="{{ __('From') }}" />
+                <flux:text class="text-zinc-500">{{ __('to') }}</flux:text>
+                <flux:input wire:model.live="to" type="date" aria-label="{{ __('To') }}" />
+            </div>
+        @endif
     </div>
 
     <flux:table :paginate="$this->appointments">
