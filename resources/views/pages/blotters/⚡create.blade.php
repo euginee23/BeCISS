@@ -2,9 +2,7 @@
 
 use App\Models\ActivityLog;
 use App\Models\Blotter;
-use App\Models\Resident;
 use App\Models\ServiceFee;
-use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -84,15 +82,6 @@ class extends Component
 
         $this->redirect(route('blotters.index'), navigate: true);
     }
-
-    #[Computed]
-    public function residents()
-    {
-        return Resident::query()
-            ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get();
-    }
 }; ?>
 
 <div>
@@ -115,12 +104,7 @@ class extends Component
 
             <flux:field>
                 <flux:label>{{ __('Resident') }} <span class="text-red-500">*</span></flux:label>
-                <flux:select wire:model="resident_id" required>
-                    <option value="">{{ __('Select a resident') }}</option>
-                    @foreach ($this->residents as $resident)
-                        <option value="{{ $resident->id }}">{{ $resident->full_name }} — {{ $resident->address }}</option>
-                    @endforeach
-                </flux:select>
+                <livewire:resident-picker wire:model="resident_id" />
                 <flux:error name="resident_id" />
             </flux:field>
         </div>

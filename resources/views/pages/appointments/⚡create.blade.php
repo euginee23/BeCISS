@@ -4,7 +4,6 @@ use App\Models\ActivityLog;
 use App\Mail\AppointmentScheduled;
 use App\Models\Appointment;
 use App\Models\Service;
-use App\Models\Resident;
 use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\Eloquent\Collection;
@@ -82,15 +81,6 @@ class extends Component
         $this->redirect(route('appointments.index'), navigate: true);
     }
 
-    #[Computed]
-    public function residents()
-    {
-        return Resident::query()
-            ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get();
-    }
-
     /**
      * @return Collection<int, Service>
      */
@@ -129,12 +119,7 @@ class extends Component
 
             <flux:field>
                 <flux:label>{{ __('Resident') }} <span class="text-red-500">*</span></flux:label>
-                <flux:select wire:model="resident_id" required>
-                    <option value="">{{ __('Select a resident') }}</option>
-                    @foreach ($this->residents as $resident)
-                        <option value="{{ $resident->id }}">{{ $resident->full_name }} ({{ $resident->address }})</option>
-                    @endforeach
-                </flux:select>
+                <livewire:resident-picker wire:model="resident_id" />
                 <flux:error name="resident_id" />
             </flux:field>
         </div>

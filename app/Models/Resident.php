@@ -397,6 +397,26 @@ class Resident extends Model
     }
 
     /**
+     * Match residents whose name or address contains every word typed, in any
+     * order, so "alma c" finds "Alma C. Abalde" and "abalde alma" does too.
+     *
+     * @param  Builder<Resident>  $query
+     * @return Builder<Resident>
+     */
+    public function scopeSearch(Builder $query, string $term): Builder
+    {
+        foreach (preg_split('/[\s,]+/', trim($term), -1, PREG_SPLIT_NO_EMPTY) as $word) {
+            $query->whereAny(
+                ['first_name', 'middle_name', 'last_name', 'suffix', 'house_number', 'street', 'purok'],
+                'like',
+                "%{$word}%",
+            );
+        }
+
+        return $query;
+    }
+
+    /**
      * Whether the record still lacks the birthdate or gender, as imported
      * household lists often do.
      */

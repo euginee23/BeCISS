@@ -10,7 +10,7 @@ use Livewire\Livewire;
 beforeEach(function () {
     $this->actingAs(User::factory()->admin()->create());
 
-    $this->resident = Resident::factory()->create(['first_name' => 'Deleted', 'last_name' => 'Person']);
+    $this->resident = Resident::factory()->create(['first_name' => 'Deleted', 'middle_name' => null, 'last_name' => 'Person', 'suffix' => null]);
 });
 
 test('appointments of a deleted resident still list with the resident name', function () {

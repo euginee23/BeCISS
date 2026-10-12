@@ -95,10 +95,7 @@ class extends Component {
                 ->where('blotter_number', 'like', "%{$search}%")
                 ->orWhere('narrative', 'like', "%{$search}%")
                 ->orWhere('respondent_name', 'like', "%{$search}%")
-                ->orWhereHas('resident', fn ($q) => $q
-                    ->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                )
+                ->orWhereHas('resident', fn ($q) => $q->search($search))
             )
             ->when($this->status, fn ($query, $status) => $query->where('status', $status))
             ->when($this->type, fn ($query, $type) => $query->where('incident_type', $type))

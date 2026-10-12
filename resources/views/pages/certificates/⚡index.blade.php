@@ -92,10 +92,7 @@ class extends Component {
                 $sub->where('certificate_number', 'like', "%{$search}%")
                     ->orWhere('purpose', 'like', "%{$search}%")
                     ->orWhere('purpose_other', 'like', "%{$search}%")
-                    ->orWhereHas('resident', fn ($q) => $q
-                        ->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                    );
+                    ->orWhereHas('resident', fn ($q) => $q->search($search));
             }))
             ->when($this->status, fn ($query, $status) => $query->where('status', $status))
             ->when($this->type, fn ($query, $type) => $query->where('type', $type))

@@ -233,16 +233,7 @@ class extends Component {
         return Resident::query()
             ->when($this->tab === 'pending', fn ($query) => $query->pending())
             ->when($this->tab === 'all', fn ($query) => $query->approved())
-            ->when($this->search, fn ($query, $search) => $query
-                ->where(fn ($q) => $q
-                    ->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('middle_name', 'like', "%{$search}%")
-                    ->orWhere('house_number', 'like', "%{$search}%")
-                    ->orWhere('street', 'like', "%{$search}%")
-                    ->orWhere('purok', 'like', "%{$search}%")
-                )
-            )
+            ->when($this->search, fn ($query, $search) => $query->search($search))
             ->when($this->tab === 'all', fn ($query) => $query
                 ->when($this->purok, fn ($q) => $q->where('purok', $this->purok))
                 ->when($this->gender, fn ($q) => $q->where('gender', $this->gender))
