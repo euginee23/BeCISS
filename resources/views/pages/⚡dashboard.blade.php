@@ -34,7 +34,7 @@ class extends Component
         $user = auth()->user();
 
         if ($user->isResident()) {
-            return $user->resident?->certificates()->whereIn('status', ['pending', 'awaiting_payment', 'processing'])->count() ?? 0;
+            return $user->resident?->certificates()->whereIn('status', Certificate::IN_PROGRESS_STATUSES)->count() ?? 0;
         }
 
         return Certificate::query()->whereIn('status', ['pending', 'processing'])->count();
@@ -447,7 +447,7 @@ class extends Component
 
         {{-- Stats Cards --}}
         <div class="grid grid-cols-2 gap-4">
-                <div class="group relative overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 transition-all hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700">
+                <a href="{{ route('resident.certificates.index', ['status' => 'in_progress']) }}" wire:navigate class="group relative block overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 transition-all hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700">
                     <div class="absolute inset-0 bg-gradient-to-br from-amber-50 to-transparent dark:from-amber-950/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div class="relative flex flex-col gap-3">
                         <div class="flex items-center justify-between">
@@ -459,9 +459,9 @@ class extends Component
                         <flux:heading size="2xl" class="text-zinc-900 dark:text-white">{{ number_format($this->pendingCertificates) }}</flux:heading>
                         <flux:text class="text-xs text-zinc-400">{{ __('Awaiting processing') }}</flux:text>
                     </div>
-                </div>
+                </a>
 
-                <div class="group relative overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 transition-all hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700">
+                <a href="{{ route('resident.appointments.index', ['tab' => 'today']) }}" wire:navigate class="group relative block overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 transition-all hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-700">
                     <div class="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-950/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div class="relative flex flex-col gap-3">
                         <div class="flex items-center justify-between">
@@ -473,7 +473,7 @@ class extends Component
                         <flux:heading size="2xl" class="text-zinc-900 dark:text-white">{{ number_format($this->todaysAppointments) }}</flux:heading>
                         <flux:text class="text-xs text-zinc-400">{{ __('Scheduled for today') }}</flux:text>
                     </div>
-                </div>
+                </a>
             </div>
 
             {{-- Recent Certificates --}}

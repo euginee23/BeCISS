@@ -47,6 +47,7 @@ class extends Component
         }
 
         return $resident->appointments()
+            ->when($this->tab === 'today', fn ($q) => $q->today())
             ->when($this->tab === 'upcoming', fn ($q) => $q->upcoming())
             ->when($this->tab === 'past', fn ($q) => $q->whereIn('status', ['completed', 'no_show', 'cancelled']))
             ->latest('appointment_date')
@@ -116,6 +117,10 @@ class extends Component
 
     {{-- Tabs --}}
     <div class="flex gap-1 border-b border-zinc-200 dark:border-zinc-700">
+        <button
+            wire:click="$set('tab', 'today')"
+            class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors {{ $tab === 'today' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200' }}"
+        >Today</button>
         <button
             wire:click="$set('tab', 'upcoming')"
             class="px-4 py-2.5 text-sm font-medium border-b-2 transition-colors {{ $tab === 'upcoming' ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-200' }}"
@@ -204,10 +209,18 @@ class extends Component
                 </div>
                 <div>
                     <flux:heading>
-                        {{ $tab === 'upcoming' ? 'No upcoming appointments' : 'No past appointments' }}
+                        {{ match ($tab) {
+                            'today' => 'No appointments today',
+                            'past' => 'No past appointments',
+                            default => 'No upcoming appointments',
+                        } }}
                     </flux:heading>
                     <flux:text class="text-zinc-400 mt-1">
-                        {{ $tab === 'upcoming' ? 'You have no scheduled or confirmed appointments.' : 'You have no completed or past appointments.' }}
+                        {{ match ($tab) {
+                            'today' => 'You have no appointments scheduled for today.',
+                            'past' => 'You have no completed or past appointments.',
+                            default => 'You have no scheduled or confirmed appointments.',
+                        } }}
                     </flux:text>
                 </div>
             </div>

@@ -50,7 +50,8 @@ class extends Component
                 'certificateType',
                 'appointments' => fn ($query) => $query->whereIn('status', ['scheduled', 'confirmed']),
             ])
-            ->when($this->status, fn ($q) => $q->where('status', $this->status))
+            ->when($this->status === 'in_progress', fn ($q) => $q->whereIn('status', Certificate::IN_PROGRESS_STATUSES))
+            ->when($this->status && $this->status !== 'in_progress', fn ($q) => $q->where('status', $this->status))
             ->latest()
             ->paginate(10);
     }
@@ -99,6 +100,7 @@ class extends Component
     <div class="flex items-center gap-3 flex-wrap">
         <flux:select wire:model.live="status" class="w-40">
             <flux:select.option value="">All Status</flux:select.option>
+            <flux:select.option value="in_progress">In Progress</flux:select.option>
             @foreach(\App\Models\Certificate::STATUSES as $value => $label)
                 <flux:select.option value="{{ $value }}">{{ $label }}</flux:select.option>
             @endforeach

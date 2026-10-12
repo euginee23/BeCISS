@@ -54,6 +54,13 @@ class Certificate extends Model
     public const array OPEN_STATUSES = ['pending', 'awaiting_payment', 'processing', 'ready_for_pickup'];
 
     /**
+     * Statuses in which the request is still being worked on, before pickup.
+     *
+     * @var list<string>
+     */
+    public const array IN_PROGRESS_STATUSES = ['pending', 'awaiting_payment', 'processing'];
+
+    /**
      * Statuses in which the resident should visit the barangay hall.
      *
      * @var list<string>

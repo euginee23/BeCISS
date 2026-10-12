@@ -105,13 +105,13 @@ test('staff are notified when a resident books an appointment', function () {
     Notification::assertNotSentTo($otherStaff, ResidentNotification::class);
 });
 
-test('the appointment queue lists the earliest booking first', function () {
+test('the appointment queue lists the newest booking first', function () {
     $admin = User::factory()->admin()->create();
 
-    $second = Appointment::factory()->create(['created_at' => now()->subMinutes(5)]);
-    $first = Appointment::factory()->create(['created_at' => now()->subHour()]);
+    $newer = Appointment::factory()->create(['created_at' => now()->subMinutes(5)]);
+    $older = Appointment::factory()->create(['created_at' => now()->subHour()]);
 
     Livewire::actingAs($admin)
         ->test('pages::appointments.index')
-        ->assertSeeInOrder([$first->reference_number, $second->reference_number]);
+        ->assertSeeInOrder([$newer->reference_number, $older->reference_number]);
 });

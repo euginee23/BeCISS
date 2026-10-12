@@ -44,13 +44,13 @@ class extends Component {
     public string $to = '';
 
     /**
-     * Default to booking order: whoever booked first is dealt with first.
+     * Default to the newest bookings first, so fresh requests are easy to find.
      */
     #[Url]
     public string $sortBy = 'created_at';
 
     #[Url]
-    public string $sortDirection = 'asc';
+    public string $sortDirection = 'desc';
 
     public bool $showCancelModal = false;
 
