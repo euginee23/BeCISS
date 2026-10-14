@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -109,6 +110,14 @@ class extends Component {
         }
 
         $this->user->update($data);
+
+        ActivityLog::record(
+            module: 'staff',
+            action: 'updated',
+            subject: $this->user,
+            description: 'Updated the account of '.$this->user->name.($this->resetPassword ? ' and reset the password' : '').'.',
+            properties: ['permissions' => $permissions],
+        );
 
         session()->flash('status', __('Staff member updated successfully.'));
 

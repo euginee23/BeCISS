@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Certificate;
 use App\Models\CertificatePurpose;
 use App\Models\CertificateType;
@@ -55,6 +56,13 @@ class extends Component
             'remarks' => $this->remarks ?: null,
             'fee' => CertificateType::feeFor($this->type),
         ]);
+
+        ActivityLog::record(
+            module: 'certificates',
+            action: 'created',
+            subject: $certificate,
+            description: 'Requested by the resident — '.$certificate->type_label.' ('.$certificate->certificate_number.').',
+        );
 
         $workflow->submitted($certificate);
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\User;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -55,9 +56,19 @@ class extends Component {
     public function deleteStaff(): void
     {
         if ($this->staffToDelete && $this->staffToDelete !== auth()->id()) {
-            User::where('id', $this->staffToDelete)
+            $member = User::query()
                 ->whereIn('role', ['staff', 'admin'])
-                ->delete();
+                ->find($this->staffToDelete);
+
+            if ($member) {
+                $member->delete();
+
+                ActivityLog::record(
+                    module: 'staff',
+                    action: 'deleted',
+                    description: 'Deleted the '.$member->role.' account of '.$member->name.' ('.$member->email.').',
+                );
+            }
 
             $this->showDeleteModal = false;
             $this->staffToDelete = null;

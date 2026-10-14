@@ -4,6 +4,7 @@ use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Models\Blotter;
 use App\Models\Certificate;
+use App\Models\CertificatePurpose;
 use App\Models\Resident;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
@@ -188,4 +189,79 @@ test('the activity log page filters by staff and module', function () {
         ->set('module', 'blotters')
         ->assertSee('Ben completed a blotter.')
         ->assertDontSee('Ana completed a certificate.');
+});
+
+test('resident submissions are logged against the resident', function () {
+    Mail::fake();
+
+    $residentUser = User::factory()->resident()->create(['name' => 'Maria Santos']);
+    Resident::factory()->create(['user_id' => $residentUser->id]);
+
+    Livewire::actingAs($residentUser)
+        ->test('pages::resident.appointments.create')
+        ->set('service_type', 'consultation')
+        ->set('description', 'Need to consult about a barangay matter.')
+        ->set('appointment_date', now()->addDay()->toDateString())
+        ->set('appointment_time', '09:00')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    Livewire::actingAs($residentUser)
+        ->test('pages::resident.certificates.create')
+        ->set('type', 'barangay_clearance')
+        ->set('purpose', CertificatePurpose::options()[0])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    Livewire::actingAs($residentUser)
+        ->test('pages::resident.blotters.create')
+        ->set('incident_type', array_key_first(Blotter::TYPES))
+        ->set('incident_datetime', now()->subDay()->format('Y-m-d\TH:i'))
+        ->set('narrative', 'A neighbour damaged the fence.')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(ActivityLog::query()->where('user_id', $residentUser->id)->orderBy('id')->pluck('module')->all())
+        ->toBe(['appointments', 'certificates', 'blotters']);
+
+    Livewire::actingAs($this->admin)
+        ->test('pages::admin.activity-logs')
+        ->assertSee('Booked by the resident')
+        ->assertSee('Maria Santos')
+        ->assertSee('Resident');
+});
+
+test('staff account changes are logged', function () {
+    $this->actingAs($this->admin);
+
+    Livewire::test('pages::staff.create')
+        ->set('name', 'Lea Cruz')
+        ->set('email', 'lea@example.com')
+        ->set('permissions', ['certificates'])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $lea = User::query()->where('email', 'lea@example.com')->sole();
+
+    Livewire::test('pages::staff.edit', ['user' => $lea])
+        ->set('permissions', ['certificates', 'appointments'])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    Livewire::test('pages::staff.index')
+        ->call('confirmDelete', $lea->id)
+        ->call('deleteStaff');
+
+    expect(ActivityLog::query()->where('module', 'staff')->orderBy('id')->get(['action', 'properties'])->toArray())
+        ->toBe([
+            ['action' => 'created', 'properties' => ['permissions' => ['certificates']]],
+            ['action' => 'updated', 'properties' => ['permissions' => ['certificates', 'appointments']]],
+            ['action' => 'deleted', 'properties' => null],
+        ]);
+});
+
+test('the activity log page refreshes itself', function () {
+    Livewire::actingAs($this->admin)
+        ->test('pages::admin.activity-logs')
+        ->assertSeeHtml('wire:poll.30s');
 });

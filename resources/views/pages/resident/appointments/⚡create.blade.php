@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Models\Service;
 use App\Models\Certificate;
@@ -102,6 +103,13 @@ class extends Component {
         $validated['reference_number'] = Appointment::generateReferenceNumber();
 
         $appointment = Appointment::create($validated);
+
+        ActivityLog::record(
+            module: 'appointments',
+            action: 'created',
+            subject: $appointment,
+            description: 'Booked by the resident — '.$appointment->service_type_label.' on '.$appointment->appointment_date->format('M j, Y').' ('.$appointment->reference_number.').',
+        );
 
         // Staff had no signal that a resident booking had arrived.
         User::query()

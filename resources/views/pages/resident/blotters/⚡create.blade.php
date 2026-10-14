@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Blotter;
 use App\Models\ServiceFee;
 use Livewire\Attributes\Layout;
@@ -52,7 +53,7 @@ class extends Component
 
         abort_unless($resident, 403);
 
-        Blotter::create([
+        $blotter = Blotter::create([
             'resident_id' => $resident->id,
             'blotter_number' => Blotter::generateBlotterNumber(),
             'fee' => ServiceFee::getFee('blotter'),
@@ -65,6 +66,13 @@ class extends Component
             'narrative' => $this->narrative,
             'remarks' => $this->remarks ?: null,
         ]);
+
+        ActivityLog::record(
+            module: 'blotters',
+            action: 'created',
+            subject: $blotter,
+            description: 'Filed by the resident — blotter report '.$blotter->blotter_number.'.',
+        );
 
         session()->flash('status', __('Blotter report filed successfully.'));
 

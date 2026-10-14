@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
@@ -81,6 +82,14 @@ class extends Component {
         ]);
 
         $user->markEmailAsVerified();
+
+        ActivityLog::record(
+            module: 'staff',
+            action: 'created',
+            subject: $user,
+            description: 'Created '.($this->isAdmin ? 'admin' : 'staff').' account for '.$user->name.'.',
+            properties: ['permissions' => $permissions],
+        );
 
         session()->flash('status', __('Staff member created successfully.'));
 

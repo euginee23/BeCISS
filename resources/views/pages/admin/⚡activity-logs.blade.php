@@ -90,7 +90,7 @@ class extends Component {
 <div>
     <div class="mb-6">
         <flux:heading size="xl">{{ __('Activity Logs') }}</flux:heading>
-        <flux:text class="mt-1 text-zinc-500">{{ __('A record of every action staff have taken on residents, certificates, appointments and blotters.') }}</flux:text>
+        <flux:text class="mt-1 text-zinc-500">{{ __('A record of every action staff and residents have taken on residents, certificates, appointments, blotters and staff accounts. New entries appear automatically.') }}</flux:text>
     </div>
 
     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
@@ -128,10 +128,10 @@ class extends Component {
         <flux:button variant="ghost" wire:click="resetFilters">{{ __('Reset') }}</flux:button>
     </div>
 
-    <flux:table :paginate="$this->logs">
+    <flux:table :paginate="$this->logs" wire:poll.30s>
         <flux:table.columns>
             <flux:table.column>{{ __('When') }}</flux:table.column>
-            <flux:table.column>{{ __('Staff') }}</flux:table.column>
+            <flux:table.column>{{ __('By') }}</flux:table.column>
             <flux:table.column>{{ __('Module') }}</flux:table.column>
             <flux:table.column>{{ __('Action') }}</flux:table.column>
             <flux:table.column>{{ __('Details') }}</flux:table.column>
@@ -145,8 +145,13 @@ class extends Component {
                     </flux:table.cell>
                     <flux:table.cell>
                         <div class="flex items-center gap-3">
-                            <flux:avatar size="xs" name="{{ $log->actor?->name ?? __('Removed staff') }}" />
-                            <div>{{ $log->actor?->name ?? __('Removed staff') }}</div>
+                            <flux:avatar size="xs" name="{{ $log->actor?->name ?? __('Removed account') }}" />
+                            <div>
+                                <div>{{ $log->actor?->name ?? __('Removed account') }}</div>
+                                @if ($log->actor?->isResident())
+                                    <div class="text-xs text-zinc-500">{{ __('Resident') }}</div>
+                                @endif
+                            </div>
                         </div>
                     </flux:table.cell>
                     <flux:table.cell>

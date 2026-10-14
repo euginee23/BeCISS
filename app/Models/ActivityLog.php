@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class ActivityLog extends Model
 {
     /**
-     * The parts of the system a staff action can belong to.
+     * The parts of the system an action can belong to.
      *
      * @var array<string, string>
      */
@@ -22,6 +22,7 @@ class ActivityLog extends Model
         'purposes' => 'Certificate Purposes',
         'services' => 'Services',
         'payments' => 'Payments',
+        'staff' => 'Staff Accounts',
     ];
 
     /**
@@ -74,7 +75,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * Record a staff action.
+     * Record an action by the signed-in staff member or resident.
      *
      * @param  array<string, mixed>|null  $properties
      */
@@ -97,7 +98,7 @@ class ActivityLog extends Model
     }
 
     /**
-     * The staff member who performed the action.
+     * The staff member or resident who performed the action.
      *
      * @return BelongsTo<User, $this>
      */
