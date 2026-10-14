@@ -102,10 +102,14 @@ class Payment extends Model
     }
 
     /**
-     * Whether an OR number has already been issued on another payment.
+     * Whether an OR number has already been issued on another payment,
+     * optionally ignoring the payment being corrected.
      */
-    public static function orNumberTaken(string $orNumber): bool
+    public static function orNumberTaken(string $orNumber, ?int $ignorePaymentId = null): bool
     {
-        return static::query()->where('or_number', $orNumber)->exists();
+        return static::query()
+            ->where('or_number', $orNumber)
+            ->when($ignorePaymentId, fn (Builder $query) => $query->whereKeyNot($ignorePaymentId))
+            ->exists();
     }
 }

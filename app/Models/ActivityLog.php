@@ -40,6 +40,7 @@ class ActivityLog extends Model
         'ready' => 'Marked Ready for Pickup',
         'completed' => 'Completed',
         'paid' => 'Recorded Payment',
+        'or_corrected' => 'Corrected OR Number',
         'confirmed' => 'Confirmed',
         'cancelled' => 'Cancelled',
         'no_show' => 'Marked No Show',

@@ -18,9 +18,11 @@ class extends Component {
     public bool $showRejectModal = false;
     public bool $showCompleteModal = false;
     public bool $showExportModal = false;
+    public bool $showOrNumberModal = false;
 
     public string $rejectionReason = '';
     public string $orNumber = '';
+    public string $correctedOrNumber = '';
 
     public string $dateOfIssuance = '';
     public string $exportFormat = 'docx';
@@ -152,6 +154,43 @@ class extends Component {
     /**
      * @param  array<string, mixed>|null  $properties
      */
+    public function openOrNumberModal(): void
+    {
+        abort_unless($this->blotter->is_paid, 403);
+
+        $this->resetValidation();
+        $this->correctedOrNumber = $this->blotter->or_number ?? '';
+        $this->showOrNumberModal = true;
+    }
+
+    /**
+     * Fix a mistyped OR number. The amount and payment date stay as recorded.
+     */
+    public function correctOrNumber(): void
+    {
+        abort_unless($this->blotter->is_paid, 403);
+
+        $this->validate([
+            'correctedOrNumber' => ['required', 'string', 'max:50'],
+        ]);
+
+        $previous = $this->blotter->or_number;
+        $orNumber = trim($this->correctedOrNumber);
+
+        if ($orNumber !== $previous) {
+            if (Payment::orNumberTaken($orNumber, $this->blotter->latestPayment()->value('id'))) {
+                $this->addError('correctedOrNumber', __('This OR number has already been used.'));
+
+                return;
+            }
+
+            $this->blotter->correctOrNumber($orNumber);
+            $this->log('or_corrected', 'Corrected the OR number from '.$previous.' to '.$orNumber, ['from' => $previous, 'to' => $orNumber]);
+        }
+
+        $this->showOrNumberModal = false;
+    }
+
     private function log(string $action, string $summary, ?array $properties = null): void
     {
         ActivityLog::record(
@@ -322,9 +361,14 @@ class extends Component {
                     </dd>
                 </div>
                 @if ($blotter->or_number)
-                    <div class="flex justify-between">
+                    <div class="flex items-center justify-between">
                         <dt class="text-zinc-500">{{ __('OR Number') }}</dt>
-                        <dd class="font-mono font-medium">{{ $blotter->or_number }}</dd>
+                        <dd class="flex items-center gap-1 font-mono font-medium">
+                            {{ $blotter->or_number }}
+                            @if ($blotter->is_paid)
+                                <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="openOrNumberModal" :tooltip="__('Correct OR number')" />
+                            @endif
+                        </dd>
                     </div>
                 @endif
             </dl>
@@ -413,7 +457,7 @@ class extends Component {
             @if ($blotter->requiresPayment())
                 <flux:field>
                     <flux:label>{{ __('OR Number') }} <span class="text-red-500">*</span></flux:label>
-                    <flux:input wire:model="orNumber" placeholder="OR-XXXX-XXXX" required />
+                    <flux:input wire:model="orNumber" placeholder="OR-XXXX-XXXX" autocomplete="off" required />
                     <flux:error name="orNumber" />
                 </flux:field>
             @endif
@@ -427,6 +471,29 @@ class extends Component {
                 </flux:button>
             </div>
         </div>
+    </flux:modal>
+
+    {{-- Correct OR Number Modal --}}
+    <flux:modal wire:model="showOrNumberModal" class="max-w-sm">
+        <form wire:submit="correctOrNumber" class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Correct OR Number') }}</flux:heading>
+                <flux:text class="mt-2">
+                    {{ __('Fix a mistyped receipt number. The amount and payment date stay the same.') }}
+                </flux:text>
+            </div>
+
+            <flux:field>
+                <flux:label>{{ __('OR Number') }} <span class="text-red-500">*</span></flux:label>
+                <flux:input wire:model="correctedOrNumber" placeholder="OR-XXXX-XXXX" autocomplete="off" required />
+                <flux:error name="correctedOrNumber" />
+            </flux:field>
+
+            <div class="flex justify-end gap-2">
+                <flux:button variant="ghost" wire:click="$set('showOrNumberModal', false)">{{ __('Cancel') }}</flux:button>
+                <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
+            </div>
+        </form>
     </flux:modal>
 
     {{-- Reject Modal --}}

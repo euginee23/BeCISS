@@ -59,4 +59,16 @@ trait HasPayments
 
         return $payment;
     }
+
+    /**
+     * Fix a mistyped OR number on the latest payment, keeping the
+     * denormalised or_number column in step with it.
+     */
+    public function correctOrNumber(string $orNumber): void
+    {
+        $this->latestPayment()->first()?->update(['or_number' => $orNumber]);
+
+        $this->forceFill(['or_number' => $orNumber])->save();
+        $this->unsetRelation('latestPayment');
+    }
 }

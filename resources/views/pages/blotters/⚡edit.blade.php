@@ -2,6 +2,7 @@
 
 use App\Models\ActivityLog;
 use App\Models\Blotter;
+use App\Models\Payment;
 use App\Models\Resident;
 use App\Models\ServiceFee;
 use Livewire\Attributes\Computed;
@@ -76,6 +77,21 @@ class extends Component
     {
         $this->validate();
 
+        $payment = $this->blotter->latestPayment()->first();
+        $orNumber = trim($this->or_number);
+
+        if ($payment && $orNumber === '') {
+            $this->addError('or_number', __('A paid blotter report must keep its OR number.'));
+
+            return;
+        }
+
+        if ($payment && $orNumber !== $payment->or_number && Payment::orNumberTaken($orNumber, $payment->id)) {
+            $this->addError('or_number', __('This OR number has already been used.'));
+
+            return;
+        }
+
         $this->blotter->update([
             'resident_id' => $this->resident_id,
             'incident_type' => $this->incident_type,
@@ -86,7 +102,7 @@ class extends Component
             'respondent_name' => $this->respondent_name ?: null,
             'narrative' => $this->narrative,
             'remarks' => $this->remarks ?: null,
-            'or_number' => $this->or_number ?: null,
+            ...($payment ? [] : ['or_number' => $orNumber ?: null]),
         ]);
 
         ActivityLog::record(
@@ -95,6 +111,18 @@ class extends Component
             subject: $this->blotter,
             description: 'Updated blotter report '.$this->blotter->blotter_number.'.',
         );
+
+        if ($payment && $orNumber !== $payment->or_number) {
+            $this->blotter->correctOrNumber($orNumber);
+
+            ActivityLog::record(
+                module: 'blotters',
+                action: 'or_corrected',
+                subject: $this->blotter,
+                description: 'Corrected the OR number from '.$payment->or_number.' to '.$orNumber.' — blotter report '.$this->blotter->blotter_number.'.',
+                properties: ['from' => $payment->or_number, 'to' => $orNumber],
+            );
+        }
 
         session()->flash('status', __('Blotter report updated successfully.'));
 
@@ -219,7 +247,7 @@ class extends Component
 
                 <flux:field>
                     <flux:label>{{ __('OR Number') }}</flux:label>
-                    <flux:input wire:model="or_number" placeholder="OR-XXXX-XXXX" />
+                    <flux:input wire:model="or_number" placeholder="OR-XXXX-XXXX" autocomplete="off" />
                     <flux:error name="or_number" />
                 </flux:field>
             </div>

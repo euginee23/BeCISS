@@ -187,7 +187,7 @@ class extends Component
 
                 <flux:field>
                     <flux:label>{{ __('OR Number') }} <flux:text class="text-zinc-400 text-xs">({{ __('optional — if paid on filing') }})</flux:text></flux:label>
-                    <flux:input wire:model="or_number" placeholder="OR-XXXX-XXXX" />
+                    <flux:input wire:model="or_number" placeholder="OR-XXXX-XXXX" autocomplete="off" />
                     <flux:error name="or_number" />
                 </flux:field>
             </div>

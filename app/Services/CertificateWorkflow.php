@@ -128,6 +128,38 @@ class CertificateWorkflow
     }
 
     /**
+     * Fix a mistyped OR number on a paid request. The amount and payment
+     * date stay as recorded; only the receipt number changes.
+     */
+    public function correctOrNumber(Certificate $certificate, string $orNumber): void
+    {
+        $previous = $certificate->or_number;
+
+        DB::transaction(function () use ($certificate, $orNumber): void {
+            $locked = Certificate::query()->lockForUpdate()->findOrFail($certificate->id);
+
+            if (! $locked->is_paid) {
+                throw ValidationException::withMessages(['correctedOrNumber' => __('No payment has been recorded for this request.')]);
+            }
+
+            if (Payment::orNumberTaken($orNumber, $locked->latestPayment()->value('id'))) {
+                throw ValidationException::withMessages(['correctedOrNumber' => __('This OR number has already been used.')]);
+            }
+
+            $locked->correctOrNumber($orNumber);
+        });
+
+        $certificate->refresh();
+
+        $this->log(
+            $certificate,
+            'or_corrected',
+            'Corrected the OR number from '.$previous.' to '.$orNumber,
+            ['from' => $previous, 'to' => $orNumber],
+        );
+    }
+
+    /**
      * Save the issuance details printed on the certificate and mark it ready.
      *
      * @param  array{issued_at: string, ctc_number?: ?string, ctc_place_issued?: ?string, ctc_date_issued?: ?string}  $issuance

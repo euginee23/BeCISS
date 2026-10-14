@@ -16,6 +16,7 @@ class extends Component {
     public Certificate $certificate;
 
     public bool $showPaymentModal = false;
+    public bool $showOrNumberModal = false;
     public bool $showReadyModal = false;
     public bool $showRejectModal = false;
     public bool $showCancelModal = false;
@@ -24,6 +25,7 @@ class extends Component {
     public string $cancellationReason = '';
     public string $orNumber = '';
     public string $paymentRemarks = '';
+    public string $correctedOrNumber = '';
 
     public string $issuedAt = '';
     public string $ctcNumber = '';
@@ -79,6 +81,31 @@ class extends Component {
         $workflow->recordPayment($this->certificate, trim($this->orNumber), Auth::user(), $this->paymentRemarks ?: null);
 
         $this->showPaymentModal = false;
+        $this->refreshCertificate();
+    }
+
+    public function openOrNumberModal(): void
+    {
+        abort_unless($this->canRecordPayment && $this->certificate->is_paid, 403);
+
+        $this->resetValidation();
+        $this->correctedOrNumber = $this->certificate->or_number ?? '';
+        $this->showOrNumberModal = true;
+    }
+
+    public function correctOrNumber(CertificateWorkflow $workflow): void
+    {
+        abort_unless($this->canRecordPayment, 403);
+
+        $this->validate([
+            'correctedOrNumber' => ['required', 'string', 'max:50'],
+        ]);
+
+        if (trim($this->correctedOrNumber) !== $this->certificate->or_number) {
+            $workflow->correctOrNumber($this->certificate, trim($this->correctedOrNumber));
+        }
+
+        $this->showOrNumberModal = false;
         $this->refreshCertificate();
     }
 
@@ -308,9 +335,14 @@ class extends Component {
                     </dd>
                 </div>
                 @if ($certificate->or_number)
-                    <div class="flex justify-between">
+                    <div class="flex items-center justify-between">
                         <dt class="text-zinc-500">{{ __('OR Number') }}</dt>
-                        <dd class="font-mono font-medium">{{ $certificate->or_number }}</dd>
+                        <dd class="flex items-center gap-1 font-mono font-medium">
+                            {{ $certificate->or_number }}
+                            @if ($certificate->is_paid && $this->canRecordPayment)
+                                <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="openOrNumberModal" :tooltip="__('Correct OR number')" />
+                            @endif
+                        </dd>
                     </div>
                 @endif
                 @if ($certificate->latestPayment)
@@ -441,13 +473,13 @@ class extends Component {
 
             <flux:field>
                 <flux:label>{{ __('OR Number') }} <span class="text-red-500">*</span></flux:label>
-                <flux:input wire:model="orNumber" placeholder="OR-XXXX-XXXX" required />
+                <flux:input wire:model="orNumber" placeholder="OR-XXXX-XXXX" autocomplete="off" required />
                 <flux:error name="orNumber" />
             </flux:field>
 
             <flux:field>
                 <flux:label>{{ __('Remarks') }}</flux:label>
-                <flux:input wire:model="paymentRemarks" />
+                <flux:input wire:model="paymentRemarks" autocomplete="off" />
                 <flux:error name="paymentRemarks" />
             </flux:field>
 
@@ -456,6 +488,29 @@ class extends Component {
             <div class="flex justify-end gap-2">
                 <flux:button variant="ghost" wire:click="$set('showPaymentModal', false)">{{ __('Cancel') }}</flux:button>
                 <flux:button type="submit" variant="primary">{{ __('Record Payment') }}</flux:button>
+            </div>
+        </form>
+    </flux:modal>
+
+    {{-- Correct OR Number Modal --}}
+    <flux:modal wire:model="showOrNumberModal" class="max-w-sm">
+        <form wire:submit="correctOrNumber" class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Correct OR Number') }}</flux:heading>
+                <flux:text class="mt-2">
+                    {{ __('Fix a mistyped receipt number. The amount and payment date stay the same.') }}
+                </flux:text>
+            </div>
+
+            <flux:field>
+                <flux:label>{{ __('OR Number') }} <span class="text-red-500">*</span></flux:label>
+                <flux:input wire:model="correctedOrNumber" placeholder="OR-XXXX-XXXX" autocomplete="off" required />
+                <flux:error name="correctedOrNumber" />
+            </flux:field>
+
+            <div class="flex justify-end gap-2">
+                <flux:button variant="ghost" wire:click="$set('showOrNumberModal', false)">{{ __('Cancel') }}</flux:button>
+                <flux:button type="submit" variant="primary">{{ __('Save') }}</flux:button>
             </div>
         </form>
     </flux:modal>
