@@ -59,6 +59,41 @@ test('admin can cancel an appointment', function () {
 
 /*
 |--------------------------------------------------------------------------
+| Stale Page
+|--------------------------------------------------------------------------
+*/
+
+test('confirming an appointment that is no longer scheduled explains instead of failing', function () {
+    Mail::fake();
+
+    $this->actingAs($this->admin);
+
+    $scheduled = Appointment::factory()->create(['status' => 'scheduled']);
+
+    $page = Livewire::test('pages::appointments.show', ['appointment' => $scheduled]);
+
+    $scheduled->update(['status' => 'confirmed']);
+
+    $page->call('confirmAppointment')
+        ->assertOk()
+        ->assertHasErrors(['action'])
+        ->assertSee('This appointment is already Confirmed.')
+        ->assertSee('Mark Complete');
+
+    Mail::assertNothingSent();
+});
+
+test('the confirm button is disabled while the request runs', function () {
+    $this->actingAs($this->admin);
+
+    $scheduled = Appointment::factory()->create(['status' => 'scheduled']);
+
+    Livewire::test('pages::appointments.show', ['appointment' => $scheduled])
+        ->assertSeeHtml('wire:target="confirmAppointment"');
+});
+
+/*
+|--------------------------------------------------------------------------
 | No Show
 |--------------------------------------------------------------------------
 */

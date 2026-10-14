@@ -73,7 +73,9 @@ class extends Component
 
     public function confirmAppointment(): void
     {
-        abort_unless($this->appointment->status === 'scheduled', 422);
+        if (! $this->statusStillAllows(['scheduled'])) {
+            return;
+        }
 
         $this->appointment->update([
             'status' => 'confirmed',
@@ -97,7 +99,9 @@ class extends Component
 
     public function completeAppointment(): void
     {
-        abort_unless(in_array($this->appointment->status, ['scheduled', 'confirmed'], true), 422);
+        if (! $this->statusStillAllows(['scheduled', 'confirmed'])) {
+            return;
+        }
 
         $notes = $this->appointment->notes;
         if ($this->completionNotes) {
@@ -124,7 +128,9 @@ class extends Component
 
     public function markNoShow(): void
     {
-        abort_unless($this->appointment->status === 'confirmed', 422);
+        if (! $this->statusStillAllows(['confirmed'])) {
+            return;
+        }
 
         $this->appointment->update([
             'status' => 'no_show',
@@ -147,7 +153,9 @@ class extends Component
 
     public function cancelAppointment(): void
     {
-        abort_unless(in_array($this->appointment->status, ['scheduled', 'confirmed'], true), 422);
+        if (! $this->statusStillAllows(['scheduled', 'confirmed'])) {
+            return;
+        }
 
         $this->appointment->update([
             'status' => 'cancelled',
@@ -165,6 +173,27 @@ class extends Component
             title: 'Appointment Cancelled',
             body: 'Your appointment for '.$this->appointment->service_type_label.' ('.$this->appointment->reference_number.') has been cancelled. Reason: '.$this->cancellationReason,
         );
+    }
+
+    /**
+     * Whether the appointment is still in a status the action applies to.
+     * A page left open in another tab, or reached with the Back button, can
+     * show buttons for a status that has since changed; explain that and let
+     * the re-render show the current actions instead of failing outright.
+     *
+     * @param  list<string>  $statuses
+     */
+    private function statusStillAllows(array $statuses): bool
+    {
+        if (in_array($this->appointment->status, $statuses, true)) {
+            return true;
+        }
+
+        $this->showCancelModal = false;
+        $this->showCompleteModal = false;
+        $this->addError('action', __('This appointment is already :status. The page has been refreshed.', ['status' => $this->appointment->status_label]));
+
+        return false;
     }
 
     /**
@@ -230,7 +259,7 @@ class extends Component
         {{-- Action Buttons --}}
         <div class="flex flex-wrap gap-2">
             @if ($appointment->status === 'scheduled')
-                <flux:button variant="primary" wire:click="confirmAppointment">
+                <flux:button variant="primary" wire:click="confirmAppointment" wire:loading.attr="disabled" wire:target="confirmAppointment">
                     {{ __('Confirm') }}
                 </flux:button>
                 <flux:button variant="danger" wire:click="openCancelModal">
@@ -240,7 +269,7 @@ class extends Component
                 <flux:button variant="primary" wire:click="openCompleteModal">
                     {{ __('Mark Complete') }}
                 </flux:button>
-                <flux:button variant="ghost" wire:click="markNoShow">
+                <flux:button variant="ghost" wire:click="markNoShow" wire:loading.attr="disabled" wire:target="markNoShow">
                     {{ __('No Show') }}
                 </flux:button>
                 <flux:button variant="danger" wire:click="openCancelModal">
@@ -249,6 +278,10 @@ class extends Component
             @endif
         </div>
     </div>
+
+    @error('action')
+        <flux:callout variant="warning" icon="exclamation-triangle" class="mb-6" :heading="$message" />
+    @enderror
 
     <div class="grid gap-6 lg:grid-cols-2">
         {{-- Schedule Information --}}

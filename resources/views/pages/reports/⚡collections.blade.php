@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\HasDateRangePresets;
 use App\Models\Blotter;
 use App\Models\Certificate;
 use App\Models\CertificateType;
@@ -20,6 +21,8 @@ new
 #[Title('Collection Report')]
 #[Layout('layouts::app')]
 class extends Component {
+    use HasDateRangePresets;
+
     #[Url]
     public string $from = '';
 
@@ -62,15 +65,6 @@ class extends Component {
     public function updatedTo(): void
     {
         $this->to = $this->validDate($this->to) ?? now()->toDateString();
-    }
-
-    public function setRange(string $range): void
-    {
-        [$this->from, $this->to] = match ($range) {
-            'week' => [now()->startOfWeek()->toDateString(), now()->toDateString()],
-            'month' => [now()->startOfMonth()->toDateString(), now()->toDateString()],
-            default => [now()->toDateString(), now()->toDateString()],
-        };
     }
 
     /**
@@ -236,9 +230,9 @@ class extends Component {
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div class="flex gap-2">
-            <flux:button size="sm" variant="ghost" wire:click="setRange('today')">{{ __('Today') }}</flux:button>
-            <flux:button size="sm" variant="ghost" wire:click="setRange('week')">{{ __('This week') }}</flux:button>
-            <flux:button size="sm" variant="ghost" wire:click="setRange('month')">{{ __('This month') }}</flux:button>
+            @foreach ($this->rangePresets() as $range => $label)
+                <flux:button size="sm" :variant="$this->activeRange() === $range ? 'filled' : 'ghost'" wire:click="setRange('{{ $range }}')">{{ $label }}</flux:button>
+            @endforeach
         </div>
         <div class="flex gap-2">
             <flux:button icon="arrow-down-tray" wire:click="export">{{ __('Export CSV') }}</flux:button>

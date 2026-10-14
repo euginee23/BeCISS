@@ -1,5 +1,6 @@
 <?php
 
+use App\Concerns\HasDateRangePresets;
 use App\Models\Appointment;
 use App\Models\Blotter;
 use App\Models\Certificate;
@@ -19,6 +20,8 @@ new
 #[Title('Reports')]
 #[Layout('layouts::app')]
 class extends Component {
+    use HasDateRangePresets;
+
     #[Url]
     public string $from = '';
 
@@ -52,12 +55,6 @@ class extends Component {
     public function updatedTo(): void
     {
         $this->to = $this->validDate($this->to) ?? now()->toDateString();
-    }
-
-    public function resetFilters(): void
-    {
-        $this->from = now()->startOfMonth()->toDateString();
-        $this->to = now()->toDateString();
     }
 
     /**
@@ -241,9 +238,14 @@ class extends Component {
                 <flux:input type="date" wire:model.live="to" />
             </flux:field>
 
-            <flux:button variant="ghost" wire:click="resetFilters">{{ __('This month') }}</flux:button>
             <flux:button variant="primary" icon="printer" x-on:click="window.print()">{{ __('Print') }}</flux:button>
         </div>
+    </div>
+
+    <div class="mb-6 flex flex-wrap gap-2 print:hidden">
+        @foreach ($this->rangePresets() as $range => $label)
+            <flux:button size="sm" :variant="$this->activeRange() === $range ? 'filled' : 'ghost'" wire:click="setRange('{{ $range }}')">{{ $label }}</flux:button>
+        @endforeach
     </div>
 
     <div class="mb-6 hidden print:block">
