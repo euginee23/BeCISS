@@ -21,6 +21,11 @@ class Service extends Model
     public const string CERTIFICATE_VISIT = 'certificate_request';
 
     /**
+     * The catch-all service whose bookings carry a typed service name.
+     */
+    public const string OTHER = 'other';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>

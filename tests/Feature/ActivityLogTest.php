@@ -237,6 +237,7 @@ test('staff account changes are logged', function () {
     Livewire::test('pages::staff.create')
         ->set('name', 'Lea Cruz')
         ->set('email', 'lea@example.com')
+        ->set('password', 'Lea-Typed-Pass-2026!')
         ->set('permissions', ['certificates'])
         ->call('save')
         ->assertHasNoErrors();

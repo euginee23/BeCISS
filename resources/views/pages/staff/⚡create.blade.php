@@ -25,14 +25,10 @@ class extends Component {
     /** @var list<string> */
     public array $permissions = [];
 
-    public function mount(): void
-    {
-        $this->generatePassword();
-    }
-
     public function generatePassword(): void
     {
         $this->password = Str::password(16);
+        $this->showPassword = true;
     }
 
     public function updatedIsAdmin(): void
@@ -134,13 +130,15 @@ class extends Component {
             <flux:heading size="lg" class="mb-4">{{ __('Password') }}</flux:heading>
 
             <flux:field>
-                <flux:label>{{ __('Generated Password') }} <span class="text-red-500">*</span></flux:label>
+                <flux:label>{{ __('Password') }} <span class="text-red-500">*</span></flux:label>
                 <div class="flex items-center gap-2">
                     <div class="relative flex-1">
                         <flux:input
                             wire:model="password"
                             :type="$showPassword ? 'text' : 'password'"
-                            readonly
+                            autocomplete="new-password"
+                            placeholder="{{ __('Type a password or generate one') }}"
+                            required
                         />
                     </div>
                     <flux:button
@@ -149,6 +147,7 @@ class extends Component {
                         :icon="$showPassword ? 'eye-slash' : 'eye'"
                         wire:click="$toggle('showPassword')"
                         type="button"
+                        :tooltip="$showPassword ? __('Hide password') : __('Show password')"
                     />
                     <flux:button
                         variant="ghost"
@@ -156,11 +155,12 @@ class extends Component {
                         icon="arrow-path"
                         wire:click="generatePassword"
                         type="button"
+                        :tooltip="__('Generate a password')"
                     />
                 </div>
                 <flux:error name="password" />
                 <flux:text class="text-sm text-zinc-500 mt-1">
-                    {{ __('Share this password with the staff member securely. They can change it later in their settings.') }}
+                    {{ __('Use at least 12 characters with upper and lower case letters, a number and a symbol. Share this password with the staff member securely. They can change it later in their settings.') }}
                 </flux:text>
             </flux:field>
         </div>

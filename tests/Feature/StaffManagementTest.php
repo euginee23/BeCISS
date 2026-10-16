@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 /*
 |--------------------------------------------------------------------------
@@ -62,6 +63,7 @@ test('admin can create a staff member', function () {
         ->test('pages::staff.create')
         ->set('name', 'John Staff')
         ->set('email', 'john@example.com')
+        ->set('password', 'Typed-Password-2026!')
         ->set('permissions', ['residents', 'certificates'])
         ->call('save')
         ->assertRedirect(route('staff.index'));
@@ -83,6 +85,7 @@ test('admin can create an admin user', function () {
         ->test('pages::staff.create')
         ->set('name', 'New Admin')
         ->set('email', 'newadmin@example.com')
+        ->set('password', 'Typed-Password-2026!')
         ->set('isAdmin', true)
         ->call('save')
         ->assertRedirect(route('staff.index'));
@@ -141,6 +144,47 @@ test('create staff requires permissions when not admin', function () {
         ->assertHasErrors(['permissions']);
 });
 
+test('create staff starts with an empty password the admin can type', function () {
+    $admin = User::factory()->admin()->create();
+
+    Livewire\Livewire::actingAs($admin)
+        ->test('pages::staff.create')
+        ->assertSet('password', '')
+        ->set('name', 'Typed Staff')
+        ->set('email', 'typed@example.com')
+        ->set('password', 'My-Chosen-Pass-123')
+        ->set('permissions', ['residents'])
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('staff.index'));
+
+    $newStaff = User::where('email', 'typed@example.com')->first();
+    expect(Hash::check('My-Chosen-Pass-123', $newStaff->password))->toBeTrue();
+});
+
+test('create staff requires a password', function () {
+    $admin = User::factory()->admin()->create();
+
+    Livewire\Livewire::actingAs($admin)
+        ->test('pages::staff.create')
+        ->set('name', 'No Password')
+        ->set('email', 'nopass@example.com')
+        ->set('permissions', ['residents'])
+        ->call('save')
+        ->assertHasErrors(['password' => 'required']);
+});
+
+test('create staff can still generate a password', function () {
+    $admin = User::factory()->admin()->create();
+
+    $component = Livewire\Livewire::actingAs($admin)
+        ->test('pages::staff.create')
+        ->call('generatePassword')
+        ->assertSet('showPassword', true);
+
+    expect(strlen($component->get('password')))->toBe(16);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Staff Management - Edit
@@ -185,6 +229,51 @@ test('admin cannot change own role', function () {
         ->test('pages::staff.edit', ['user' => $admin]);
 
     expect($component->get('isSelf'))->toBeTrue();
+});
+
+test('admin can type a new password for a staff member', function () {
+    $admin = User::factory()->admin()->create();
+    $staff = User::factory()->staff(['residents'])->create();
+
+    Livewire\Livewire::actingAs($admin)
+        ->test('pages::staff.edit', ['user' => $staff])
+        ->call('changePassword')
+        ->assertSet('resetPassword', true)
+        ->assertSet('password', '')
+        ->set('password', 'New-Typed-Pass-456')
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('staff.index'));
+
+    expect(Hash::check('New-Typed-Pass-456', $staff->refresh()->password))->toBeTrue();
+});
+
+test('changing a staff password requires a value', function () {
+    $admin = User::factory()->admin()->create();
+    $staff = User::factory()->staff(['residents'])->create();
+
+    Livewire\Livewire::actingAs($admin)
+        ->test('pages::staff.edit', ['user' => $staff])
+        ->call('changePassword')
+        ->call('save')
+        ->assertHasErrors(['password' => 'required']);
+});
+
+test('cancelling a password change keeps the current password', function () {
+    $admin = User::factory()->admin()->create();
+    $staff = User::factory()->staff(['residents'])->create();
+    $originalHash = $staff->password;
+
+    Livewire\Livewire::actingAs($admin)
+        ->test('pages::staff.edit', ['user' => $staff])
+        ->call('changePassword')
+        ->set('password', 'Discarded-Pass-789')
+        ->call('cancelPasswordChange')
+        ->assertSet('resetPassword', false)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect($staff->refresh()->password)->toBe($originalHash);
 });
 
 test('edit staff rejects resident users', function () {

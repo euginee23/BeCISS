@@ -163,6 +163,7 @@ class extends Component {
             ->when($this->search, fn ($query, $search) => $query->where(fn ($query) => $query
                 ->where('reference_number', 'like', "%{$search}%")
                 ->orWhere('description', 'like', "%{$search}%")
+                ->orWhere('other_service', 'like', "%{$search}%")
                 ->orWhereHas('resident', fn ($q) => $q->search($search))
             ))
             ->when($this->status, fn ($query, $status) => $query->where('status', $status))

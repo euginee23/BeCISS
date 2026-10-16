@@ -22,6 +22,7 @@ class extends Component {
     public ?int $certificate_id = null;
 
     public string $service_type = '';
+    public string $other_service = '';
     public string $description = '';
     public string $appointment_date = '';
     public string $appointment_time = '';
@@ -75,6 +76,7 @@ class extends Component {
                 ...$this->services->pluck('slug')->all(),
                 ...($this->certificate_id ? [Service::CERTIFICATE_VISIT] : []),
             ])],
+            'other_service' => Appointment::otherServiceRules(),
             'description' => ['required', 'string', 'max:1000'],
             'appointment_date' => ['required', 'date', 'after_or_equal:today', 'before_or_equal:'.Appointment::maxBookingDate()],
             'appointment_time' => ['required', 'date_format:H:i'],
@@ -98,6 +100,8 @@ class extends Component {
             $validated['certificate_id'] = $this->certificate_id;
             $validated['service_type'] = Service::CERTIFICATE_VISIT;
         }
+
+        $validated['other_service'] = $validated['service_type'] === Service::OTHER ? trim($validated['other_service']) : null;
 
         $validated['resident_id'] = $resident->id;
         $validated['reference_number'] = Appointment::generateReferenceNumber();
@@ -187,6 +191,12 @@ class extends Component {
                         @endforeach
                     </flux:select>
                     <flux:error name="service_type" />
+                </flux:field>
+
+                <flux:field x-cloak x-show="$wire.service_type === '{{ \App\Models\Service::OTHER }}'" @class(['hidden' => $this->linkableCertificate])>
+                    <flux:label>{{ __('Specify Service') }} <span class="text-red-500">*</span></flux:label>
+                    <flux:input wire:model="other_service" maxlength="255" placeholder="{{ __('Type the service you need') }}" />
+                    <flux:error name="other_service" />
                 </flux:field>
 
                 <flux:field class="sm:col-span-2">

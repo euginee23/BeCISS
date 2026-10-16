@@ -45,6 +45,20 @@ class extends Component {
         $this->isSelf = $user->id === auth()->id();
     }
 
+    public function changePassword(): void
+    {
+        $this->password = '';
+        $this->resetPassword = true;
+    }
+
+    public function cancelPasswordChange(): void
+    {
+        $this->password = '';
+        $this->resetPassword = false;
+        $this->showPassword = false;
+        $this->resetErrorBag('password');
+    }
+
     public function generatePassword(): void
     {
         $this->password = Str::password(16);
@@ -169,7 +183,9 @@ class extends Component {
                             <flux:input
                                 wire:model="password"
                                 :type="$showPassword ? 'text' : 'password'"
-                                readonly
+                                autocomplete="new-password"
+                                placeholder="{{ __('Type a password or generate one') }}"
+                                required
                             />
                         </div>
                         <flux:button
@@ -178,6 +194,7 @@ class extends Component {
                             :icon="$showPassword ? 'eye-slash' : 'eye'"
                             wire:click="$toggle('showPassword')"
                             type="button"
+                            :tooltip="$showPassword ? __('Hide password') : __('Show password')"
                         />
                         <flux:button
                             variant="ghost"
@@ -185,18 +202,24 @@ class extends Component {
                             icon="arrow-path"
                             wire:click="generatePassword"
                             type="button"
+                            :tooltip="__('Generate a password')"
                         />
                     </div>
                     <flux:error name="password" />
                     <flux:text class="text-sm text-zinc-500 mt-1">
-                        {{ __('Share this password with the staff member securely.') }}
+                        {{ __('Use at least 12 characters with upper and lower case letters, a number and a symbol. Share this password with the staff member securely.') }}
                     </flux:text>
+                    <div class="mt-3">
+                        <flux:button variant="ghost" size="sm" wire:click="cancelPasswordChange" type="button">
+                            {{ __('Keep current password') }}
+                        </flux:button>
+                    </div>
                 </flux:field>
             @else
-                <flux:text class="text-sm text-zinc-500">{{ __('Leave the password as is, or generate a new one.') }}</flux:text>
+                <flux:text class="text-sm text-zinc-500">{{ __('Leave the password as is, or set a new one.') }}</flux:text>
                 <div class="mt-3">
-                    <flux:button variant="outline" size="sm" icon="arrow-path" wire:click="generatePassword" type="button">
-                        {{ __('Reset Password') }}
+                    <flux:button variant="outline" size="sm" icon="key" wire:click="changePassword" type="button">
+                        {{ __('Change Password') }}
                     </flux:button>
                 </div>
             @endif

@@ -41,6 +41,7 @@ class Appointment extends Model
         'handled_by',
         'reference_number',
         'service_type',
+        'other_service',
         'description',
         'appointment_date',
         'appointment_time',
@@ -92,11 +93,25 @@ class Appointment extends Model
     }
 
     /**
-     * Get the service type label.
+     * Get the service type label, using the typed service for "Other" bookings.
      */
     public function getServiceTypeLabelAttribute(): string
     {
+        if ($this->service_type === Service::OTHER && filled($this->other_service)) {
+            return $this->other_service;
+        }
+
         return $this->service?->name ?? Str::headline($this->service_type);
+    }
+
+    /**
+     * Validation rules for the typed service shown when "Other" is picked.
+     *
+     * @return list<string>
+     */
+    public static function otherServiceRules(): array
+    {
+        return ['nullable', 'required_if:service_type,'.Service::OTHER, 'string', 'max:255'];
     }
 
     /**

@@ -19,6 +19,7 @@ class extends Component {
 
     public ?int $resident_id = null;
     public string $service_type = '';
+    public string $other_service = '';
     public string $description = '';
     public string $appointment_date = '';
     public string $appointment_time = '';
@@ -29,6 +30,7 @@ class extends Component {
         $this->appointment = $appointment;
         $this->resident_id = $appointment->resident_id;
         $this->service_type = $appointment->service_type;
+        $this->other_service = $appointment->other_service ?? '';
         $this->description = $appointment->description;
         $this->appointment_date = $appointment->appointment_date->format('Y-m-d');
         $this->appointment_time = $appointment->appointment_time->format('H:i');
@@ -56,6 +58,7 @@ class extends Component {
         return [
             'resident_id' => ['required', 'exists:residents,id'],
             'service_type' => ['required', Rule::in($this->services->pluck('slug')->all())],
+            'other_service' => Appointment::otherServiceRules(),
             'description' => ['required', 'string', 'max:1000'],
             'appointment_date' => ['required', 'date', 'before_or_equal:'.$this->maxDate()],
             'appointment_time' => ['required', 'date_format:H:i'],
@@ -66,6 +69,8 @@ class extends Component {
     public function save(): void
     {
         $validated = $this->validate();
+
+        $validated['other_service'] = $validated['service_type'] === Service::OTHER ? trim($validated['other_service']) : null;
 
         $this->appointment->update($validated);
 
@@ -159,6 +164,12 @@ class extends Component {
                         @endforeach
                     </flux:select>
                     <flux:error name="service_type" />
+                </flux:field>
+
+                <flux:field x-cloak x-show="$wire.service_type === '{{ \App\Models\Service::OTHER }}'">
+                    <flux:label>{{ __('Specify Service') }} <span class="text-red-500">*</span></flux:label>
+                    <flux:input wire:model="other_service" maxlength="255" placeholder="{{ __('Type the service needed') }}" />
+                    <flux:error name="other_service" />
                 </flux:field>
 
                 <flux:field class="sm:col-span-2">
