@@ -49,7 +49,9 @@ class extends Component
         return $resident->appointments()
             ->when($this->tab === 'today', fn ($q) => $q->today())
             ->when($this->tab === 'upcoming', fn ($q) => $q->upcoming())
-            ->when($this->tab === 'past', fn ($q) => $q->whereIn('status', ['completed', 'no_show', 'cancelled']))
+            ->when($this->tab === 'past', fn ($q) => $q->where(fn ($past) => $past
+                ->whereDate('appointment_date', '<', now()->toDateString())
+                ->orWhereIn('status', ['completed', 'no_show', 'cancelled'])))
             ->latest('appointment_date')
             ->paginate(10);
     }
@@ -70,7 +72,7 @@ class extends Component
         if ($this->appointmentToCancel) {
             $appt = $this->resident?->appointments()->find($this->appointmentToCancel);
 
-            if ($appt && in_array($appt->status, ['scheduled', 'confirmed'])) {
+            if ($appt?->isCancellableByResident()) {
                 $appt->update([
                     'status' => 'cancelled',
                     'cancellation_reason' => $this->cancellationReason,
@@ -181,7 +183,7 @@ class extends Component
                             </div>
                         </div>
 
-                        @if(in_array($appt->status, ['scheduled', 'confirmed']))
+                        @if($appt->isCancellableByResident())
                             <flux:button
                                 variant="ghost"
                                 size="sm"
@@ -218,7 +220,7 @@ class extends Component
                     <flux:text class="text-zinc-400 mt-1">
                         {{ match ($tab) {
                             'today' => 'You have no appointments scheduled for today.',
-                            'past' => 'You have no completed or past appointments.',
+                            'past' => 'You have no appointments before today.',
                             default => 'You have no scheduled or confirmed appointments.',
                         } }}
                     </flux:text>

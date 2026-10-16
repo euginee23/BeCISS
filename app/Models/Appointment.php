@@ -115,6 +115,16 @@ class Appointment extends Model
     }
 
     /**
+     * Whether the resident may still call off this visit: it is open and its
+     * date has not passed.
+     */
+    public function isCancellableByResident(): bool
+    {
+        return in_array($this->status, ['scheduled', 'confirmed'], true)
+            && $this->appointment_date->gte(today());
+    }
+
+    /**
      * Get the status label.
      */
     public function getStatusLabelAttribute(): string
