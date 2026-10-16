@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\ServiceFee;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -43,10 +44,21 @@ class extends Component
             'editingFee' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
         ]);
 
-        ServiceFee::findOrFail($this->editingFeeId)->update([
+        $serviceFee = ServiceFee::findOrFail($this->editingFeeId);
+        $previousFee = (float) $serviceFee->fee;
+
+        $serviceFee->update([
             'fee' => $this->editingFee,
             'is_active' => $this->editingIsActive,
         ]);
+
+        ActivityLog::record(
+            module: 'service_fees',
+            action: 'updated',
+            subject: $serviceFee,
+            description: 'Set the '.$serviceFee->label.' fee to ₱'.number_format((float) $serviceFee->fee, 2).($serviceFee->is_active ? '' : ' (inactive)').'.',
+            properties: ['from' => $previousFee, 'to' => (float) $serviceFee->fee, 'is_active' => $serviceFee->is_active],
+        );
 
         $this->showEditModal = false;
         $this->editingFeeId = null;
@@ -76,7 +88,10 @@ class extends Component
     <flux:callout icon="information-circle" color="blue">
         <flux:callout.text>
             {{ __('Certificate fees are set per certificate type.') }}
-            <flux:link href="{{ route('admin.settings.certificate-types') }}" wire:navigate>{{ __('Manage certificate types') }}</flux:link>
+            @if (auth()->user()->isAdmin())
+                <flux:link href="{{ route('admin.settings.certificate-types') }}" wire:navigate>{{ __('Manage certificate types') }}</flux:link>
+            @endif
+            <span class="block mt-1">{{ __('A new fee applies to blotters filed after the change. Blotters already filed keep the fee they were filed with.') }}</span>
         </flux:callout.text>
     </flux:callout>
 

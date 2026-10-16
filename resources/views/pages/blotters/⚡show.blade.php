@@ -5,6 +5,9 @@ use App\Models\Blotter;
 use App\Models\Payment;
 use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -19,9 +22,11 @@ class extends Component {
     public bool $showCompleteModal = false;
     public bool $showExportModal = false;
     public bool $showOrNumberModal = false;
+    public bool $showPaymentModal = false;
 
     public string $rejectionReason = '';
     public string $orNumber = '';
+    public string $paymentRemarks = '';
     public string $correctedOrNumber = '';
 
     public string $dateOfIssuance = '';
@@ -68,6 +73,64 @@ class extends Component {
             body: 'Your blotter report (' . $this->blotter->blotter_number . ') is ready for pickup at the barangay hall.',
             url: route('resident.blotters.index'),
         ));
+    }
+
+    #[Computed]
+    public function canRecordPayment(): bool
+    {
+        return Auth::user()->hasPermission('payments');
+    }
+
+    public function openPaymentModal(): void
+    {
+        abort_unless($this->canRecordPayment, 403);
+
+        $this->resetValidation();
+        $this->orNumber = '';
+        $this->paymentRemarks = '';
+        $this->showPaymentModal = true;
+    }
+
+    /**
+     * Take the fee ahead of the release, so it shows in collections the day
+     * it is paid rather than waiting for the report to be completed.
+     */
+    public function recordPayment(): void
+    {
+        abort_unless($this->canRecordPayment, 403);
+
+        $this->validate([
+            'orNumber' => ['required', 'string', 'max:50'],
+            'paymentRemarks' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $orNumber = trim($this->orNumber);
+
+        DB::transaction(function () use ($orNumber): void {
+            /**
+             * Re-read under a row lock so a double submit or two cashiers at
+             * once cannot both record a payment.
+             */
+            $locked = Blotter::query()->lockForUpdate()->findOrFail($this->blotter->id);
+
+            if (! $locked->canTakePayment()) {
+                throw ValidationException::withMessages(['orNumber' => __('This blotter has no payment due.')]);
+            }
+
+            if (Payment::orNumberTaken($orNumber)) {
+                throw ValidationException::withMessages(['orNumber' => __('This OR number has already been used.')]);
+            }
+
+            $locked->recordPayment($orNumber, Auth::user(), $this->paymentRemarks ?: null);
+        });
+
+        $this->showPaymentModal = false;
+        $this->blotter->refresh();
+        $this->log(
+            'paid',
+            'Recorded payment of ₱'.number_format((float) $this->blotter->fee, 2).' under OR '.$this->blotter->or_number,
+            ['or_number' => $this->blotter->or_number, 'fee' => (float) $this->blotter->fee],
+        );
     }
 
     public function openCompleteModal(): void
@@ -253,6 +316,12 @@ class extends Component {
 
         {{-- Action Buttons --}}
         <div class="flex gap-2">
+            @if ($blotter->canTakePayment() && $this->canRecordPayment)
+                <flux:button variant="primary" icon="banknotes" wire:click="openPaymentModal">
+                    {{ __('Record Payment') }}
+                </flux:button>
+            @endif
+
             @if (in_array($blotter->status, ['processing', 'ready_for_pickup', 'completed']))
                 <flux:button variant="primary" icon="arrow-down-tray" wire:click="openExportModal">
                     {{ __('Download') }}
@@ -472,6 +541,37 @@ class extends Component {
             </div>
         </div>
     </flux:modal>
+
+    {{-- Payment Modal --}}
+    @if ($this->canRecordPayment)
+        <flux:modal wire:model="showPaymentModal" class="max-w-sm">
+            <form wire:submit="recordPayment" class="space-y-6">
+                <div>
+                    <flux:heading size="lg">{{ __('Record Payment') }}</flux:heading>
+                    <flux:text class="mt-2">
+                        {{ __('Amount due') }}: <strong>₱{{ number_format($blotter->fee, 2) }}</strong>
+                    </flux:text>
+                </div>
+
+                <flux:field>
+                    <flux:label>{{ __('OR Number') }} <span class="text-red-500">*</span></flux:label>
+                    <flux:input wire:model="orNumber" placeholder="OR-XXXX-XXXX" autocomplete="off" required />
+                    <flux:error name="orNumber" />
+                </flux:field>
+
+                <flux:field>
+                    <flux:label>{{ __('Remarks') }}</flux:label>
+                    <flux:input wire:model="paymentRemarks" autocomplete="off" />
+                    <flux:error name="paymentRemarks" />
+                </flux:field>
+
+                <div class="flex justify-end gap-2">
+                    <flux:button variant="ghost" wire:click="$set('showPaymentModal', false)">{{ __('Cancel') }}</flux:button>
+                    <flux:button type="submit" variant="primary">{{ __('Record Payment') }}</flux:button>
+                </div>
+            </form>
+        </flux:modal>
+    @endif
 
     {{-- Correct OR Number Modal --}}
     <flux:modal wire:model="showOrNumberModal" class="max-w-sm">

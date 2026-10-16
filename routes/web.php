@@ -64,7 +64,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Admin-only routes
         Route::middleware(['role:admin'])->group(function () {
             Route::livewire('admin/settings', 'pages::admin.settings.barangay')->name('admin.settings.barangay');
-            Route::livewire('admin/settings/service-fees', 'pages::admin.settings.service-fees')->name('admin.settings.service-fees');
             Route::livewire('admin/settings/certificate-types', 'pages::admin.settings.certificate-types')->name('admin.settings.certificate-types');
             Route::livewire('admin/settings/purposes', 'pages::admin.settings.purposes')->name('admin.settings.purposes');
             Route::livewire('admin/settings/services', 'pages::admin.settings.services')->name('admin.settings.services');
@@ -128,6 +127,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::livewire('blotters/{blotter}', 'pages::blotters.show')->name('blotters.show');
                 Route::livewire('blotters/{blotter}/edit', 'pages::blotters.edit')->name('blotters.edit');
             });
+
+            // Service Fees, open to admins and to staff granted access
+            Route::livewire('admin/settings/service-fees', 'pages::admin.settings.service-fees')
+                ->middleware('permission:service_fees')
+                ->name('admin.settings.service-fees');
         });
     });
 });

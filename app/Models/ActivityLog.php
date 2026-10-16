@@ -22,6 +22,7 @@ class ActivityLog extends Model
         'purposes' => 'Certificate Purposes',
         'services' => 'Services',
         'payments' => 'Payments',
+        'service_fees' => 'Service Fees',
         'staff' => 'Staff Accounts',
     ];
 

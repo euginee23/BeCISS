@@ -20,7 +20,7 @@ class User extends Authenticatable implements MustVerifyEmail
     use HasFactory, Notifiable;
 
     /** @var list<string> */
-    public const STAFF_RESOURCES = ['residents', 'certificates', 'appointments', 'blotters', 'payments'];
+    public const STAFF_RESOURCES = ['residents', 'certificates', 'appointments', 'blotters', 'payments', 'service_fees'];
 
     /**
      * The attributes that are mass assignable.

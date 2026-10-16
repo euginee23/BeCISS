@@ -122,6 +122,15 @@ class Blotter extends Model
     }
 
     /**
+     * Whether the fee can be paid now: it is owed and the report is being
+     * worked on, so the cashier can take payment before the release.
+     */
+    public function canTakePayment(): bool
+    {
+        return $this->requiresPayment() && in_array($this->status, ['processing', 'ready_for_pickup'], true);
+    }
+
+    /**
      * Get the resident that filed the blotter, including deleted ones.
      *
      * @return BelongsTo<Resident, $this>

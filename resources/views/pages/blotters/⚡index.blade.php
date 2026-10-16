@@ -173,9 +173,14 @@ class extends Component {
                     <flux:table.cell>{{ $blotter->type_label }}</flux:table.cell>
                     <flux:table.cell>{{ $blotter->respondent_name ?? '—' }}</flux:table.cell>
                     <flux:table.cell>
-                        <flux:badge size="sm" :color="$blotter->status_color">
-                            {{ $blotter->status_label }}
-                        </flux:badge>
+                        <div class="flex items-center gap-1">
+                            <flux:badge size="sm" :color="$blotter->status_color">
+                                {{ $blotter->status_label }}
+                            </flux:badge>
+                            @if ($blotter->canTakePayment())
+                                <flux:badge size="sm" color="amber">{{ __('Unpaid') }}</flux:badge>
+                            @endif
+                        </div>
                     </flux:table.cell>
                     <flux:table.cell class="whitespace-nowrap text-sm text-zinc-500">
                         {{ $blotter->created_at->format('M j, Y') }}

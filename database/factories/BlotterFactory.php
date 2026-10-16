@@ -24,6 +24,7 @@ class BlotterFactory extends Factory
             'resident_id' => Resident::factory(),
             'blotter_number' => 'BLT-'.date('Y').'-'.str_pad(fake()->unique()->numberBetween(1, 99999), 5, '0', STR_PAD_LEFT),
             'incident_type' => fake()->randomElement($types),
+            'incident_type_other' => fn (array $attributes): ?string => $attributes['incident_type'] === 'other' ? fake()->words(2, true) : null,
             'incident_datetime' => fake()->dateTimeBetween('-30 days', 'now'),
             'owner_name' => fake()->optional(0.5)->name(),
             'respondent_name' => fake()->optional(0.7)->name(),

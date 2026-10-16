@@ -53,6 +53,11 @@
                         {{ __('Collection Report') }}
                     </flux:sidebar.item>
                     @endif
+                    @if(! auth()->user()->isAdmin() && auth()->user()->hasPermission('service_fees'))
+                    <flux:sidebar.item icon="currency-dollar" :href="route('admin.settings.service-fees')" :current="request()->routeIs('admin.settings.service-fees')" wire:navigate>
+                        {{ __('Service Fees') }}
+                    </flux:sidebar.item>
+                    @endif
                 </flux:sidebar.group>
                 @endif
 
