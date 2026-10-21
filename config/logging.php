@@ -73,10 +73,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        /**
+         * Audit trail of sent texts. Its own level, so lowering LOG_LEVEL on
+         * a live server does not silence the "SMS sent" entries.
+         */
         'sms' => [
             'driver' => 'single',
             'path' => storage_path('logs/sms.log'),
-            'level' => env('LOG_LEVEL', 'debug'),
+            'level' => env('SMS_LOG_LEVEL', 'info'),
             'replace_placeholders' => true,
         ],
 
