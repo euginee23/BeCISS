@@ -48,6 +48,7 @@ class Blotter extends Model
      */
     protected $fillable = [
         'resident_id',
+        'is_walk_in',
         'processed_by',
         'blotter_number',
         'incident_type',
@@ -82,6 +83,7 @@ class Blotter extends Model
             'rejected_at' => 'datetime',
             'fee' => 'decimal:2',
             'is_paid' => 'boolean',
+            'is_walk_in' => 'boolean',
         ];
     }
 
@@ -128,6 +130,15 @@ class Blotter extends Model
     public function canTakePayment(): bool
     {
         return $this->requiresPayment() && in_array($this->status, ['processing', 'ready_for_pickup'], true);
+    }
+
+    /**
+     * Whether staff may still reject the report. Walk-in reports were taken
+     * at the counter, so they are never rejected.
+     */
+    public function canBeRejected(): bool
+    {
+        return ! $this->is_walk_in && in_array($this->status, ['pending', 'processing'], true);
     }
 
     /**

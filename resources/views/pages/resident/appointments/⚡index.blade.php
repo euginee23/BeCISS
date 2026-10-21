@@ -52,7 +52,8 @@ class extends Component
             ->when($this->tab === 'past', fn ($q) => $q->where(fn ($past) => $past
                 ->whereDate('appointment_date', '<', now()->toDateString())
                 ->orWhereIn('status', ['completed', 'no_show', 'cancelled'])))
-            ->latest('appointment_date')
+            ->latest()
+            ->latest('id')
             ->paginate(10);
     }
 

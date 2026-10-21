@@ -88,3 +88,14 @@ it('exports the listing as csv', function () {
         ->toContain('Cashier One')
         ->toContain('TOTAL');
 });
+
+test('the newest payment is listed first', function () {
+    $this->travel(-2)->hours();
+    Certificate::factory()->create(['fee' => 100])->recordPayment('OR-EARLIER', $this->cashier);
+    $this->travelBack();
+    Blotter::factory()->create(['fee' => 250])->recordPayment('OR-LATEST', $this->cashier);
+
+    Livewire::actingAs($this->admin)
+        ->test('pages::reports.collections')
+        ->assertSeeInOrder(['OR-LATEST', 'OR-EARLIER']);
+});

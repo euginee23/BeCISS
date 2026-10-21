@@ -2,7 +2,10 @@
 
 use App\Models\ActivityLog;
 use App\Models\Blotter;
+use App\Models\Payment;
 use App\Models\ServiceFee;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -52,31 +55,66 @@ class extends Component
         ];
     }
 
+    /**
+     * Staff file walk-in reports for someone at the counter, so they skip the
+     * pending review and start in processing. An OR number entered here
+     * records the fee as paid on filing.
+     */
     public function save(): void
     {
         $this->validate();
 
-        $blotter = Blotter::create([
-            'resident_id' => $this->resident_id,
-            'blotter_number' => Blotter::generateBlotterNumber(),
-            'fee' => ServiceFee::getFee('blotter'),
-            'incident_type' => $this->incident_type,
-            'incident_type_other' => $this->incident_type === 'other' ? $this->incident_type_other : null,
-            'incident_datetime' => $this->incident_datetime,
-            'incident_location' => $this->incident_location ?: null,
-            'owner_name' => $this->owner_name ?: null,
-            'respondent_name' => $this->respondent_name ?: null,
-            'narrative' => $this->narrative,
-            'remarks' => $this->remarks ?: null,
-            'or_number' => $this->or_number ?: null,
-        ]);
+        $orNumber = trim($this->or_number);
+        $fee = ServiceFee::getFee('blotter');
+
+        if ($orNumber !== '' && $fee > 0 && Payment::orNumberTaken($orNumber)) {
+            $this->addError('or_number', __('This OR number has already been used.'));
+
+            return;
+        }
+
+        $blotter = DB::transaction(function () use ($orNumber, $fee): Blotter {
+            $blotter = Blotter::create([
+                'resident_id' => $this->resident_id,
+                'is_walk_in' => true,
+                'status' => 'processing',
+                'processed_by' => Auth::id(),
+                'processed_at' => now(),
+                'blotter_number' => Blotter::generateBlotterNumber(),
+                'fee' => $fee,
+                'incident_type' => $this->incident_type,
+                'incident_type_other' => $this->incident_type === 'other' ? $this->incident_type_other : null,
+                'incident_datetime' => $this->incident_datetime,
+                'incident_location' => $this->incident_location ?: null,
+                'owner_name' => $this->owner_name ?: null,
+                'respondent_name' => $this->respondent_name ?: null,
+                'narrative' => $this->narrative,
+                'remarks' => $this->remarks ?: null,
+            ]);
+
+            if ($orNumber !== '' && $fee > 0) {
+                $blotter->recordPayment($orNumber, Auth::user());
+            }
+
+            return $blotter;
+        });
 
         ActivityLog::record(
             module: 'blotters',
             action: 'created',
             subject: $blotter,
-            description: 'Created blotter report '.$blotter->blotter_number.'.',
+            description: 'Created walk-in blotter report '.$blotter->blotter_number.'.',
         );
+
+        if ($blotter->is_paid) {
+            ActivityLog::record(
+                module: 'blotters',
+                action: 'paid',
+                subject: $blotter,
+                description: 'Recorded payment of ₱'.number_format((float) $blotter->fee, 2).' under OR '.$blotter->or_number.' — blotter '.$blotter->blotter_number.'.',
+                properties: ['or_number' => $blotter->or_number, 'fee' => (float) $blotter->fee],
+            );
+        }
 
         session()->flash('status', __('Blotter report created successfully.'));
 

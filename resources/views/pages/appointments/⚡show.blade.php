@@ -5,10 +5,14 @@ use App\Mail\AppointmentCompleted;
 use App\Mail\AppointmentConfirmed;
 use App\Models\ActivityLog;
 use App\Models\Appointment;
+use App\Models\Payment;
 use App\Notifications\ResidentNotification;
 use App\Services\CertificateWorkflow;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -92,32 +96,75 @@ class extends Component
         );
     }
 
+    /**
+     * The fee still to collect for this visit, at the current service rate.
+     */
+    #[Computed]
+    public function amountDue(): float
+    {
+        return $this->appointment->is_paid ? 0.0 : $this->appointment->serviceFee();
+    }
+
     public function openCompleteModal(): void
     {
+        $this->resetValidation();
+        $this->orNumber = '';
+        unset($this->amountDue);
         $this->showCompleteModal = true;
     }
 
+    /**
+     * Complete the visit, recording the service fee under an OR number when
+     * one is due so it shows in the collection reports.
+     */
     public function completeAppointment(): void
     {
         if (! $this->statusStillAllows(['scheduled', 'confirmed'])) {
             return;
         }
 
+        unset($this->amountDue);
+        $fee = $this->amountDue;
+        $orNumber = trim($this->orNumber);
+
+        $this->validate([
+            'orNumber' => [$fee > 0 ? 'required' : 'nullable', 'string', 'max:50'],
+        ]);
+
         $notes = $this->appointment->notes;
         if ($this->completionNotes) {
             $notes = $notes ? $notes."\n\nCompletion: ".$this->completionNotes : $this->completionNotes;
         }
 
-        $this->appointment->update([
-            'status' => 'completed',
-            'completed_at' => now(),
-            'handled_by' => Auth::id(),
-            'notes' => $notes,
-        ]);
+        DB::transaction(function () use ($fee, $orNumber, $notes): void {
+            if ($fee > 0) {
+                if (Payment::orNumberTaken($orNumber)) {
+                    throw ValidationException::withMessages(['orNumber' => __('This OR number has already been used.')]);
+                }
+
+                $this->appointment->forceFill(['fee' => $fee]);
+                $this->appointment->recordPayment($orNumber, Auth::user());
+            }
+
+            $this->appointment->update([
+                'status' => 'completed',
+                'completed_at' => now(),
+                'handled_by' => Auth::id(),
+                'notes' => $notes,
+            ]);
+        });
 
         $this->showCompleteModal = false;
         $this->appointment->refresh();
         $this->log('completed', 'Completed the appointment');
+
+        if ($fee > 0) {
+            $this->log(
+                'paid',
+                'Recorded payment of ₱'.number_format($fee, 2).' under OR '.$orNumber,
+                ['or_number' => $orNumber, 'fee' => $fee],
+            );
+        }
         $this->notifyResident(AppointmentCompleted::class);
         $this->notifyResidentDatabase(
             type: 'appointment_completed',
@@ -252,6 +299,9 @@ class extends Component
                 <flux:badge size="lg" :color="$appointment->status_color">
                     {{ $appointment->status_label }}
                 </flux:badge>
+                @if ($appointment->is_walk_in)
+                    <flux:badge size="lg" color="zinc">{{ __('Walk-in') }}</flux:badge>
+                @endif
             </flux:heading>
             <flux:text class="mt-1 text-zinc-500">{{ $appointment->service_type_label }}</flux:text>
         </div>
@@ -303,6 +353,17 @@ class extends Component
                     <dt class="text-zinc-500">{{ __('Service Type') }}</dt>
                     <dd class="font-medium">{{ $appointment->service_type_label }}</dd>
                 </div>
+                @if ($appointment->is_paid)
+                    <div class="flex justify-between">
+                        <dt class="text-zinc-500">{{ __('Fee') }}</dt>
+                        <dd><flux:badge size="sm" color="emerald">₱{{ number_format($appointment->fee, 2) }} · {{ __('Paid (OR :or)', ['or' => $appointment->or_number]) }}</flux:badge></dd>
+                    </div>
+                @elseif ($this->amountDue > 0 && in_array($appointment->status, ['scheduled', 'confirmed']))
+                    <div class="flex justify-between">
+                        <dt class="text-zinc-500">{{ __('Fee') }}</dt>
+                        <dd><flux:badge size="sm" color="amber">₱{{ number_format($this->amountDue, 2) }} · {{ __('Collect on completion') }}</flux:badge></dd>
+                    </div>
+                @endif
             </dl>
         </div>
 
@@ -433,9 +494,21 @@ class extends Component
             <div>
                 <flux:heading size="lg">{{ __('Complete Appointment') }}</flux:heading>
                 <flux:text class="mt-2">
-                    {{ __('Add any final notes before completing this appointment.') }}
+                    @if ($this->amountDue > 0)
+                        {{ __('Enter the Official Receipt number for the ₱:amount fee to complete this appointment.', ['amount' => number_format($this->amountDue, 2)]) }}
+                    @else
+                        {{ __('Add any final notes before completing this appointment.') }}
+                    @endif
                 </flux:text>
             </div>
+
+            @if ($this->amountDue > 0)
+                <flux:field>
+                    <flux:label>{{ __('OR Number') }} <span class="text-red-500">*</span></flux:label>
+                    <flux:input wire:model="orNumber" placeholder="OR-XXXX-XXXX" autocomplete="off" required />
+                    <flux:error name="orNumber" />
+                </flux:field>
+            @endif
 
             <flux:field>
                 <flux:label>{{ __('Completion Notes') }}</flux:label>

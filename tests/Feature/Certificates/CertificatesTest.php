@@ -68,7 +68,8 @@ describe('certificates create', function () {
             'resident_id' => $resident->id,
             'type' => 'barangay_clearance',
             'purpose' => 'Employment / Job Application',
-            'status' => 'pending',
+            'is_walk_in' => true,
+            'status' => 'awaiting_payment',
         ]);
     });
 
@@ -87,7 +88,8 @@ describe('certificates create', function () {
             'resident_id' => $resident->id,
             'type' => 'barangay_certification',
             'purpose' => 'Legal / Court Purposes',
-            'status' => 'pending',
+            'is_walk_in' => true,
+            'status' => 'awaiting_payment',
         ]);
     });
 

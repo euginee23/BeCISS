@@ -210,6 +210,9 @@ class extends Component {
                 <flux:badge size="lg" :color="$certificate->status_color">
                     {{ $certificate->status_label }}
                 </flux:badge>
+                @if ($certificate->is_walk_in)
+                    <flux:badge size="lg" color="zinc">{{ __('Walk-in') }}</flux:badge>
+                @endif
             </flux:heading>
             <flux:text class="mt-1 text-zinc-500">{{ $certificate->type_label }}</flux:text>
         </div>

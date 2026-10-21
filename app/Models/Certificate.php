@@ -74,6 +74,7 @@ class Certificate extends Model
      */
     protected $fillable = [
         'resident_id',
+        'is_walk_in',
         'processed_by',
         'certificate_number',
         'type',
@@ -113,6 +114,7 @@ class Certificate extends Model
             'ctc_date_issued' => 'date',
             'fee' => 'decimal:2',
             'is_paid' => 'boolean',
+            'is_walk_in' => 'boolean',
         ];
     }
 
@@ -227,6 +229,10 @@ class Certificate extends Model
 
     public function canTransitionTo(string $status): bool
     {
+        if ($status === 'rejected' && $this->is_walk_in) {
+            return false;
+        }
+
         return in_array($status, self::TRANSITIONS[$this->status] ?? [], true);
     }
 

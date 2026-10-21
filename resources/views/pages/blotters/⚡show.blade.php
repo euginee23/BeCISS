@@ -191,6 +191,8 @@ class extends Component {
 
     public function rejectBlotter(): void
     {
+        abort_unless($this->blotter->canBeRejected(), 403);
+
         $this->validate([
             'rejectionReason' => ['required', 'string', 'max:500'],
         ]);
@@ -310,6 +312,9 @@ class extends Component {
                 <flux:badge size="lg" :color="$blotter->status_color">
                     {{ $blotter->status_label }}
                 </flux:badge>
+                @if ($blotter->is_walk_in)
+                    <flux:badge size="lg" color="zinc">{{ __('Walk-in') }}</flux:badge>
+                @endif
             </flux:heading>
             <flux:text class="mt-1 text-zinc-500">{{ $blotter->type_label }}</flux:text>
         </div>
@@ -332,19 +337,19 @@ class extends Component {
                 <flux:button variant="primary" wire:click="startProcessing">
                     {{ __('Start Processing') }}
                 </flux:button>
-                <flux:button variant="danger" wire:click="openRejectModal">
-                    {{ __('Reject') }}
-                </flux:button>
             @elseif ($blotter->status === 'processing')
                 <flux:button variant="primary" wire:click="markReadyForPickup">
                     {{ __('Mark Ready for Pickup') }}
                 </flux:button>
-                <flux:button variant="danger" wire:click="openRejectModal">
-                    {{ __('Reject') }}
-                </flux:button>
             @elseif ($blotter->status === 'ready_for_pickup')
                 <flux:button variant="primary" wire:click="openCompleteModal">
                     {{ __('Complete & Release') }}
+                </flux:button>
+            @endif
+
+            @if ($blotter->canBeRejected())
+                <flux:button variant="danger" wire:click="openRejectModal">
+                    {{ __('Reject') }}
                 </flux:button>
             @endif
         </div>

@@ -1,6 +1,7 @@
 <?php
 
 use App\Concerns\HasDateRangePresets;
+use App\Models\Appointment;
 use App\Models\Blotter;
 use App\Models\Certificate;
 use App\Models\CertificateType;
@@ -33,7 +34,7 @@ class extends Component {
     public string $cashier = '';
 
     /**
-     * "blotter", a certificate type slug, or empty for everything.
+     * "blotter", "appointment", a certificate type slug, or empty for everything.
      */
     #[Url]
     public string $source = '';
@@ -68,7 +69,7 @@ class extends Component {
     }
 
     /**
-     * Every payment in the period, oldest first, as the OR booklet reads.
+     * Every payment in the period, newest first.
      *
      * @return Collection<int, Payment>
      */
@@ -79,19 +80,21 @@ class extends Component {
             ->with([
                 'payable' => fn (MorphTo $morphTo) => $morphTo->morphWith([
                     Certificate::class => ['certificateType'],
+                    Appointment::class => ['service'],
                 ]),
                 'receiver',
             ])
             ->paidBetween($this->from ?: now(), $this->to ?: now())
             ->when($this->cashier, fn (Builder $query) => $query->where('received_by', $this->cashier))
             ->when($this->source === 'blotter', fn (Builder $query) => $query->where('payable_type', Blotter::class))
-            ->when($this->source && $this->source !== 'blotter', fn (Builder $query) => $query->whereHasMorph(
+            ->when($this->source === 'appointment', fn (Builder $query) => $query->where('payable_type', Appointment::class))
+            ->when($this->source && ! in_array($this->source, ['blotter', 'appointment'], true), fn (Builder $query) => $query->whereHasMorph(
                 'payable',
                 [Certificate::class],
                 fn (Builder $certificates) => $certificates->where('type', $this->source),
             ))
-            ->orderBy('paid_at')
-            ->orderBy('id')
+            ->orderByDesc('paid_at')
+            ->orderByDesc('id')
             ->get();
     }
 
@@ -156,6 +159,7 @@ class extends Component {
         return [
             ...CertificateType::labels(),
             'blotter' => __('Blotter Report'),
+            'appointment' => __('Appointment Services'),
         ];
     }
 
@@ -192,7 +196,7 @@ class extends Component {
     <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between print:hidden">
         <div>
             <flux:heading size="xl">{{ __('Collection Report') }}</flux:heading>
-            <flux:text class="mt-1 text-zinc-500">{{ __('Official receipts issued for certificates and blotter reports.') }}</flux:text>
+            <flux:text class="mt-1 text-zinc-500">{{ __('Official receipts issued for certificates, blotter reports and appointments.') }}</flux:text>
         </div>
 
         <div class="flex flex-wrap items-end gap-3">
@@ -261,7 +265,7 @@ class extends Component {
             <flux:text class="text-sm font-medium text-zinc-500">{{ __('OR range') }}</flux:text>
             <flux:heading size="lg" class="mt-2 font-mono">
                 @if ($this->payments->isNotEmpty())
-                    {{ $this->payments->first()->or_number }} &ndash; {{ $this->payments->last()->or_number }}
+                    {{ $this->payments->last()->or_number }} &ndash; {{ $this->payments->first()->or_number }}
                 @else
                     —
                 @endif

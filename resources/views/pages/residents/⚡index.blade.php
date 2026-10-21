@@ -473,7 +473,7 @@ class extends Component {
                             <flux:avatar size="xs" name="{{ $resident->full_name }}" />
                             <div>
                                 <div class="flex items-center gap-2">
-                                    {{ $resident->full_name }}
+                                    {{ $resident->list_name }}
                                     @if ($resident->isIncomplete())
                                         <flux:badge size="sm" color="amber">{{ __('Incomplete') }}</flux:badge>
                                     @endif

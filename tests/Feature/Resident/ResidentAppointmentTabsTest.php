@@ -93,3 +93,16 @@ test('a resident can still cancel an upcoming appointment', function () {
 
     expect($appointment->refresh()->status)->toBe('cancelled');
 });
+
+test('the newest booking is listed first', function () {
+    $this->travel(-2)->days();
+    residentAppointment($this->resident, 'APT-BOOKED-FIRST', now()->addDays(4)->toDateString());
+    $this->travelBack();
+
+    residentAppointment($this->resident, 'APT-BOOKED-LATEST', now()->addDay()->toDateString());
+
+    Livewire::actingAs($this->user)
+        ->test('pages::resident.appointments.index')
+        ->set('tab', 'upcoming')
+        ->assertSeeInOrder(['APT-BOOKED-LATEST', 'APT-BOOKED-FIRST']);
+});

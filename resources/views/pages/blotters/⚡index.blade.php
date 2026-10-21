@@ -24,6 +24,12 @@ class extends Component {
     #[Url]
     public string $type = '';
 
+    /**
+     * The typed incident type to match when the "Other" type is picked.
+     */
+    #[Url]
+    public string $typeOther = '';
+
     #[Url]
     public string $sortBy = 'created_at';
 
@@ -55,6 +61,12 @@ class extends Component {
     }
 
     public function updatedType(): void
+    {
+        $this->typeOther = '';
+        $this->resetPage();
+    }
+
+    public function updatedTypeOther(): void
     {
         $this->resetPage();
     }
@@ -91,14 +103,16 @@ class extends Component {
     {
         return Blotter::query()
             ->with('resident')
-            ->when($this->search, fn ($query, $search) => $query
+            ->when($this->search, fn ($query, $search) => $query->where(fn ($matches) => $matches
                 ->where('blotter_number', 'like', "%{$search}%")
                 ->orWhere('narrative', 'like', "%{$search}%")
                 ->orWhere('respondent_name', 'like', "%{$search}%")
+                ->orWhere('incident_type_other', 'like', "%{$search}%")
                 ->orWhereHas('resident', fn ($q) => $q->search($search))
-            )
+            ))
             ->when($this->status, fn ($query, $status) => $query->where('status', $status))
             ->when($this->type, fn ($query, $type) => $query->where('incident_type', $type))
+            ->when($this->type === 'other' && trim($this->typeOther) !== '', fn ($query) => $query->where('incident_type_other', 'like', '%'.trim($this->typeOther).'%'))
             ->orderBy($this->sortBy, $this->sortDirection)
             ->paginate(10);
     }
@@ -137,6 +151,14 @@ class extends Component {
                 <option value="{{ $key }}">{{ $label }}</option>
             @endforeach
         </flux:select>
+
+        @if ($type === 'other')
+            <flux:input
+                wire:model.live.debounce.300ms="typeOther"
+                placeholder="{{ __('Type the incident type...') }}"
+                class="max-w-xs"
+            />
+        @endif
     </div>
 
     <flux:table :paginate="$this->blotters">

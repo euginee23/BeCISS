@@ -221,6 +221,21 @@ class Resident extends Model
     }
 
     /**
+     * The name surname first, e.g. "Abalde, Aljun B.", matching the
+     * alphabetical order of resident lists.
+     */
+    public function getListNameAttribute(): string
+    {
+        $givenNames = implode(' ', array_filter([
+            $this->first_name,
+            $this->middle_name,
+            $this->suffix,
+        ]));
+
+        return $this->last_name.($givenNames !== '' ? ', '.$givenNames : '');
+    }
+
+    /**
      * Get the resident's composed address.
      *
      * The `address` column was replaced by structured parts; this accessor keeps

@@ -22,6 +22,7 @@ class AppointmentFactory extends Factory
             'resident_id' => Resident::factory(),
             'reference_number' => Appointment::generateReferenceNumber(),
             'service_type' => fake()->randomElement(['complaint', 'mediation', 'business_permit', 'health_services', 'legal_assistance', 'consultation', 'other']),
+            'other_service' => fn (array $attributes): ?string => $attributes['service_type'] === 'other' ? fake()->words(2, true) : null,
             'description' => fake()->sentence(10),
             'appointment_date' => fake()->dateTimeBetween('now', '+'.Appointment::MAX_ADVANCE_DAYS.' days'),
             'appointment_time' => fake()->time('H:i:00'),

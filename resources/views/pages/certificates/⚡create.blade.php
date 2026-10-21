@@ -4,7 +4,9 @@ use App\Models\ActivityLog;
 use App\Models\Certificate;
 use App\Models\CertificatePurpose;
 use App\Models\CertificateType;
+use App\Services\CertificateWorkflow;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -42,12 +44,18 @@ class extends Component
         ];
     }
 
-    public function save(): void
+    /**
+     * Staff enter walk-in requests for someone at the counter, so they are
+     * approved on the spot instead of waiting in pending.
+     */
+    public function save(CertificateWorkflow $workflow): void
     {
         $this->validate();
 
         $certificate = Certificate::createWithNumber([
             'resident_id' => $this->resident_id,
+            'is_walk_in' => true,
+            'status' => 'pending',
             'type' => $this->type,
             'purpose' => $this->purpose,
             'purpose_other' => $this->purpose === CertificatePurpose::OTHER ? $this->purpose_other : null,
@@ -59,8 +67,10 @@ class extends Component
             module: 'certificates',
             action: 'created',
             subject: $certificate,
-            description: 'Created '.$certificate->type_label.' request ('.$certificate->certificate_number.').',
+            description: 'Created walk-in '.$certificate->type_label.' request ('.$certificate->certificate_number.').',
         );
+
+        $workflow->approve($certificate, Auth::user());
 
         session()->flash('status', __('Certificate request created successfully.'));
 

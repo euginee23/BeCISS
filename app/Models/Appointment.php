@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\HasActivityLogs;
+use App\Concerns\HasPayments;
 use Database\Factories\AppointmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Support\Str;
 class Appointment extends Model
 {
     /** @use HasFactory<AppointmentFactory> */
-    use HasActivityLogs, HasFactory;
+    use HasActivityLogs, HasFactory, HasPayments;
 
     /**
      * How far ahead an appointment may be booked.
@@ -37,12 +38,16 @@ class Appointment extends Model
      */
     protected $fillable = [
         'resident_id',
+        'is_walk_in',
         'certificate_id',
         'handled_by',
         'reference_number',
         'service_type',
         'other_service',
         'description',
+        'fee',
+        'is_paid',
+        'or_number',
         'appointment_date',
         'appointment_time',
         'status',
@@ -64,6 +69,9 @@ class Appointment extends Model
             'appointment_time' => 'datetime:H:i',
             'cancelled_at' => 'datetime',
             'completed_at' => 'datetime',
+            'fee' => 'decimal:2',
+            'is_paid' => 'boolean',
+            'is_walk_in' => 'boolean',
         ];
     }
 
@@ -112,6 +120,20 @@ class Appointment extends Model
     public static function otherServiceRules(): array
     {
         return ['nullable', 'required_if:service_type,'.Service::OTHER, 'string', 'max:255'];
+    }
+
+    /**
+     * The fee to collect when the visit is completed. Certificate visits are
+     * free here because the linked certificate carries its own fee, and
+     * complaint visits use the Blotter Report fee from Service Fees.
+     */
+    public function serviceFee(): float
+    {
+        return match ($this->service_type) {
+            Service::CERTIFICATE_VISIT => 0.0,
+            Service::COMPLAINT => ServiceFee::getFee('blotter'),
+            default => (float) ($this->service?->fee ?? 0),
+        };
     }
 
     /**

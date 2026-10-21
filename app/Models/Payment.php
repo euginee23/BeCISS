@@ -46,7 +46,7 @@ class Payment extends Model
     }
 
     /**
-     * The certificate or blotter this payment settles.
+     * The certificate, blotter or appointment this payment settles.
      *
      * @return MorphTo<Model, $this>
      */
@@ -73,18 +73,20 @@ class Payment extends Model
         return match (true) {
             $this->payable instanceof Certificate => $this->payable->type_label,
             $this->payable instanceof Blotter => __('Blotter Report'),
+            $this->payable instanceof Appointment => $this->payable->service_type_label,
             default => __('Unknown'),
         };
     }
 
     /**
-     * The certificate or blotter number the payment settles.
+     * The certificate, blotter or appointment number the payment settles.
      */
     public function getReferenceNumberAttribute(): string
     {
         return match (true) {
             $this->payable instanceof Certificate => $this->payable->certificate_number,
             $this->payable instanceof Blotter => $this->payable->blotter_number,
+            $this->payable instanceof Appointment => $this->payable->reference_number,
             default => '—',
         };
     }

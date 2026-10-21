@@ -21,6 +21,11 @@ class Service extends Model
     public const string CERTIFICATE_VISIT = 'certificate_request';
 
     /**
+     * The complaint/blotter service, charged at the Blotter Report fee.
+     */
+    public const string COMPLAINT = 'complaint';
+
+    /**
      * The catch-all service whose bookings carry a typed service name.
      */
     public const string OTHER = 'other';

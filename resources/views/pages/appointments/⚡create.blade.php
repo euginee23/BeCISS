@@ -5,6 +5,7 @@ use App\Mail\AppointmentScheduled;
 use App\Models\Appointment;
 use App\Models\Service;
 use App\Notifications\ResidentNotification;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
@@ -51,12 +52,19 @@ class extends Component
         ];
     }
 
+    /**
+     * Staff book walk-in visits for someone at the counter, so they are
+     * confirmed on the spot instead of waiting as scheduled.
+     */
     public function save(): void
     {
         $validated = $this->validate();
 
         $validated['other_service'] = $validated['service_type'] === Service::OTHER ? trim($validated['other_service']) : null;
         $validated['reference_number'] = Appointment::generateReferenceNumber();
+        $validated['is_walk_in'] = true;
+        $validated['status'] = 'confirmed';
+        $validated['handled_by'] = Auth::id();
 
         $appointment = Appointment::create($validated);
 

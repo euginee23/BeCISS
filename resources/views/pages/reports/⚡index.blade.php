@@ -124,6 +124,7 @@ class extends Component {
         return [
             'certificates' => (float) (clone $payments)->where('payable_type', Certificate::class)->sum('amount'),
             'blotters' => (float) (clone $payments)->where('payable_type', Blotter::class)->sum('amount'),
+            'appointments' => (float) (clone $payments)->where('payable_type', Appointment::class)->sum('amount'),
             'receipts' => (clone $payments)->count(),
             'outstanding' => (float) $this->inRange(Certificate::query())->where('is_paid', false)->tap($openStatuses)->sum('fee')
                 + (float) $this->inRange(Blotter::query())->where('is_paid', false)->tap($openStatuses)->sum('fee'),
@@ -276,7 +277,7 @@ class extends Component {
             @endif
         </div>
 
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
             <div>
                 <flux:text class="text-sm text-zinc-500">{{ __('Certificate fees') }}</flux:text>
                 <flux:heading size="lg" class="mt-1">&#8369;{{ number_format($this->revenue['certificates'], 2) }}</flux:heading>
@@ -286,9 +287,13 @@ class extends Component {
                 <flux:heading size="lg" class="mt-1">&#8369;{{ number_format($this->revenue['blotters'], 2) }}</flux:heading>
             </div>
             <div>
+                <flux:text class="text-sm text-zinc-500">{{ __('Appointment fees') }}</flux:text>
+                <flux:heading size="lg" class="mt-1">&#8369;{{ number_format($this->revenue['appointments'], 2) }}</flux:heading>
+            </div>
+            <div>
                 <flux:text class="text-sm text-zinc-500">{{ __('Total collected') }}</flux:text>
                 <flux:heading size="lg" class="mt-1 text-emerald-600 dark:text-emerald-400">
-                    &#8369;{{ number_format($this->revenue['certificates'] + $this->revenue['blotters'], 2) }}
+                    &#8369;{{ number_format($this->revenue['certificates'] + $this->revenue['blotters'] + $this->revenue['appointments'], 2) }}
                 </flux:heading>
             </div>
             <div>

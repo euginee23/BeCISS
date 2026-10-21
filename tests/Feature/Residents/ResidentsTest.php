@@ -43,6 +43,15 @@ describe('residents index', function () {
             ->assertSee($resident->first_name)
             ->assertSee($resident->last_name);
     });
+
+    it('lists residents alphabetically by surname, showing the surname first', function () {
+        Resident::factory()->create(['first_name' => 'Zeny', 'middle_name' => 'C.', 'last_name' => 'Abalde', 'suffix' => null]);
+        Resident::factory()->create(['first_name' => 'Aljun', 'middle_name' => 'B.', 'last_name' => 'Bacus', 'suffix' => null]);
+
+        Livewire::actingAs($this->admin)
+            ->test('pages::residents.index')
+            ->assertSeeInOrder(['Abalde, Zeny C.', 'Bacus, Aljun B.']);
+    });
 });
 
 describe('residents create', function () {

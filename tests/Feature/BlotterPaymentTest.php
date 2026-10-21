@@ -157,3 +157,18 @@ test('admins can grant the service fees permission', function () {
 
     expect($staff->refresh()->hasPermission('service_fees'))->toBeTrue();
 });
+
+test('picking the Other incident type lets staff type the type to filter by', function () {
+    Blotter::factory()->create(['incident_type' => 'other', 'incident_type_other' => 'Nangawat ug kwarta', 'blotter_number' => 'BLT-2026-90001']);
+    Blotter::factory()->create(['incident_type' => 'other', 'incident_type_other' => 'Giakawatan mig manok', 'blotter_number' => 'BLT-2026-90002']);
+
+    Livewire::actingAs(User::factory()->admin()->create())
+        ->test('pages::blotters.index')
+        ->set('type', 'other')
+        ->assertSeeHtml('wire:model.live.debounce.300ms="typeOther"')
+        ->assertSee('BLT-2026-90001')
+        ->assertSee('BLT-2026-90002')
+        ->set('typeOther', 'manok')
+        ->assertDontSee('BLT-2026-90001')
+        ->assertSee('BLT-2026-90002');
+});

@@ -92,6 +92,7 @@ class extends Component
                 <flux:link href="{{ route('admin.settings.certificate-types') }}" wire:navigate>{{ __('Manage certificate types') }}</flux:link>
             @endif
             <span class="block mt-1">{{ __('A new fee applies to blotters filed after the change. Blotters already filed keep the fee they were filed with.') }}</span>
+            <span class="block mt-1">{{ __('The Blotter Report fee is also collected when a Complaint/Blotter appointment is completed.') }}</span>
         </flux:callout.text>
     </flux:callout>
 

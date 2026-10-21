@@ -150,6 +150,16 @@ class extends Component
         return $this->editingId !== null && (bool) Service::find($this->editingId)?->is_system;
     }
 
+    /**
+     * The slug of the service being edited, used to point built-in services
+     * at the setting that really prices them.
+     */
+    #[Computed]
+    public function editingSlug(): ?string
+    {
+        return $this->editingId ? Service::find($this->editingId)?->slug : null;
+    }
+
     private function resetForm(): void
     {
         $this->resetValidation();
@@ -203,7 +213,13 @@ class extends Component
                             <div class="text-xs text-zinc-500 max-w-md truncate">{{ $service->description }}</div>
                         </flux:table.cell>
                         <flux:table.cell class="font-mono">
-                            {{ (float) $service->fee > 0 ? '₱'.number_format((float) $service->fee, 2) : __('Free') }}
+                            @if ($service->slug === Service::COMPLAINT)
+                                <flux:link href="{{ route('admin.settings.service-fees') }}" wire:navigate class="font-sans text-sm">{{ __('Blotter Report fee') }}</flux:link>
+                            @elseif ($service->slug === Service::CERTIFICATE_VISIT)
+                                <span class="font-sans text-sm text-zinc-500">{{ __('Per certificate') }}</span>
+                            @else
+                                {{ (float) $service->fee > 0 ? '₱'.number_format((float) $service->fee, 2) : __('Free') }}
+                            @endif
                         </flux:table.cell>
                         <flux:table.cell>
                             <div class="flex flex-wrap gap-1">
@@ -252,12 +268,27 @@ class extends Component
                     <flux:error name="name" />
                 </flux:field>
 
-                <flux:field>
-                    <flux:label>{{ __('Fee (₱)') }}</flux:label>
-                    <flux:input type="number" wire:model="fee" step="0.01" min="0" />
-                    <flux:description>{{ __('Shown to residents for reference. Use 0 if free.') }}</flux:description>
-                    <flux:error name="fee" />
-                </flux:field>
+                @if ($this->editingSlug === Service::COMPLAINT)
+                    <flux:field>
+                        <flux:label>{{ __('Fee') }}</flux:label>
+                        <flux:description>
+                            {{ __('Complaint/Blotter visits are charged the Blotter Report fee.') }}
+                            <flux:link href="{{ route('admin.settings.service-fees') }}" wire:navigate>{{ __('Change it in Service Fees') }}</flux:link>
+                        </flux:description>
+                    </flux:field>
+                @elseif ($this->editingSlug === Service::CERTIFICATE_VISIT)
+                    <flux:field>
+                        <flux:label>{{ __('Fee') }}</flux:label>
+                        <flux:description>{{ __('Certificate visits are charged the fee of the certificate being picked up.') }}</flux:description>
+                    </flux:field>
+                @else
+                    <flux:field>
+                        <flux:label>{{ __('Fee (₱)') }}</flux:label>
+                        <flux:input type="number" wire:model="fee" step="0.01" min="0" />
+                        <flux:description>{{ __('Collected with an OR number when the appointment is completed. Use 0 if free.') }}</flux:description>
+                        <flux:error name="fee" />
+                    </flux:field>
+                @endif
 
                 <flux:field>
                     <flux:label>{{ __('Display Order') }}</flux:label>
