@@ -1,6 +1,8 @@
 <?php
 
+use App\Concerns\SendsSms;
 use App\Models\Resident;
+use Illuminate\Database\Eloquent\Model;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -9,11 +11,38 @@ new
 #[Title('View Resident')]
 #[Layout('layouts::app')]
 class extends Component {
+    use SendsSms;
+
     public Resident $resident;
 
     public function mount(Resident $resident): void
     {
         $this->resident = $resident->load(['user', 'householdHead', 'householdMembers']);
+    }
+
+    protected function smsResident(): ?Resident
+    {
+        return $this->resident;
+    }
+
+    protected function smsSubject(): Model
+    {
+        return $this->resident;
+    }
+
+    protected function smsContext(): string
+    {
+        return 'resident';
+    }
+
+    protected function smsPermission(): string
+    {
+        return 'residents';
+    }
+
+    protected function smsDefaultTemplate(): string
+    {
+        return 'visit';
     }
 }; ?>
 
@@ -23,10 +52,16 @@ class extends Component {
             {{ __('Back to Residents') }}
         </flux:button>
 
-        <flux:button variant="primary" icon="pencil" href="{{ route('residents.edit', $resident) }}">
-            {{ __('Edit Resident') }}
-        </flux:button>
+        <div class="flex flex-wrap gap-2">
+            @include('partials.sms-button')
+
+            <flux:button variant="primary" icon="pencil" href="{{ route('residents.edit', $resident) }}">
+                {{ __('Edit Resident') }}
+            </flux:button>
+        </div>
     </div>
+
+    @include('partials.sms-modal')
 
     <div class="mb-6 flex items-center gap-4">
         <flux:avatar size="xl" name="{{ $resident->full_name }}" />

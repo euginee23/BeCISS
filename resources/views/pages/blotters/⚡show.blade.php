@@ -1,9 +1,12 @@
 <?php
 
+use App\Concerns\SendsSms;
 use App\Models\ActivityLog;
 use App\Models\Blotter;
 use App\Models\Payment;
+use App\Models\Resident;
 use App\Notifications\ResidentNotification;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +19,8 @@ new
 #[Title('View Blotter')]
 #[Layout('layouts::app')]
 class extends Component {
+    use SendsSms;
+
     public Blotter $blotter;
 
     public bool $showRejectModal = false;
@@ -290,6 +295,35 @@ class extends Component {
 
         $this->dispatch('download-blotter', url: $url);
     }
+
+    protected function smsResident(): ?Resident
+    {
+        return $this->blotter->resident;
+    }
+
+    protected function smsSubject(): Model
+    {
+        return $this->blotter;
+    }
+
+    protected function smsContext(): string
+    {
+        return 'blotter';
+    }
+
+    protected function smsPermission(): string
+    {
+        return 'blotters';
+    }
+
+    protected function smsDefaultTemplate(): string
+    {
+        return match (true) {
+            in_array($this->blotter->status, ['ready_for_pickup', 'completed'], true) => 'ready',
+            $this->blotter->canTakePayment() => 'payment_due',
+            default => 'processing',
+        };
+    }
 }; ?>
 
 <div>
@@ -321,6 +355,7 @@ class extends Component {
 
         {{-- Action Buttons --}}
         <div class="flex gap-2">
+            @include('partials.sms-button')
             @if ($blotter->canTakePayment() && $this->canRecordPayment)
                 <flux:button variant="primary" icon="banknotes" wire:click="openPaymentModal">
                     {{ __('Record Payment') }}
@@ -354,6 +389,8 @@ class extends Component {
             @endif
         </div>
     </div>
+
+    @include('partials.sms-modal')
 
     <div class="grid gap-6 lg:grid-cols-2">
         {{-- Complainant Information --}}

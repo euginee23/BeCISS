@@ -1,8 +1,11 @@
 <?php
 
+use App\Concerns\SendsSms;
 use App\Models\Certificate;
 use App\Models\CertificateType;
+use App\Models\Resident;
 use App\Services\CertificateWorkflow;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -13,6 +16,8 @@ new
 #[Title('View Certificate')]
 #[Layout('layouts::app')]
 class extends Component {
+    use SendsSms;
+
     public Certificate $certificate;
 
     public bool $showPaymentModal = false;
@@ -188,6 +193,36 @@ class extends Component {
         $this->certificate->refresh()->load('resident', 'processor', 'certificateType', 'latestPayment.receiver');
         unset($this->visit);
     }
+
+    protected function smsResident(): ?Resident
+    {
+        return $this->certificate->resident;
+    }
+
+    protected function smsSubject(): Model
+    {
+        return $this->certificate;
+    }
+
+    protected function smsContext(): string
+    {
+        return 'certificate';
+    }
+
+    protected function smsPermission(): string
+    {
+        return 'certificates';
+    }
+
+    protected function smsDefaultTemplate(): string
+    {
+        return match ($this->certificate->status) {
+            'awaiting_payment' => 'payment_due',
+            'ready_for_pickup', 'completed' => 'ready',
+            'rejected' => 'rejected',
+            default => 'processing',
+        };
+    }
 }; ?>
 
 <div>
@@ -219,6 +254,7 @@ class extends Component {
 
         {{-- Action Buttons --}}
         <div class="flex flex-wrap gap-2">
+            @include('partials.sms-button')
             @if ($certificate->isPrintable())
                 <flux:button variant="filled" icon="arrow-down-tray" href="{{ route('certificates.download', $certificate) }}" target="_blank">
                     {{ __('Download PDF') }}
@@ -258,6 +294,8 @@ class extends Component {
             @endif
         </div>
     </div>
+
+    @include('partials.sms-modal')
 
     <flux:error name="status" class="mb-4" />
 

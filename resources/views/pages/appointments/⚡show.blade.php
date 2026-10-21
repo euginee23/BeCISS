@@ -1,13 +1,16 @@
 <?php
 
+use App\Concerns\SendsSms;
 use App\Mail\AppointmentCancelled;
 use App\Mail\AppointmentCompleted;
 use App\Mail\AppointmentConfirmed;
 use App\Models\ActivityLog;
 use App\Models\Appointment;
 use App\Models\Payment;
+use App\Models\Resident;
 use App\Notifications\ResidentNotification;
 use App\Services\CertificateWorkflow;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -22,6 +25,8 @@ new
 #[Layout('layouts::app')]
 class extends Component
 {
+    use SendsSms;
+
     public Appointment $appointment;
 
     public bool $showCancelModal = false;
@@ -277,6 +282,35 @@ class extends Component
             url: route('resident.appointments.index'),
         ));
     }
+
+    protected function smsResident(): ?Resident
+    {
+        return $this->appointment->resident;
+    }
+
+    protected function smsSubject(): Model
+    {
+        return $this->appointment;
+    }
+
+    protected function smsContext(): string
+    {
+        return 'appointment';
+    }
+
+    protected function smsPermission(): string
+    {
+        return 'appointments';
+    }
+
+    protected function smsDefaultTemplate(): string
+    {
+        return match (true) {
+            $this->appointment->status === 'cancelled' => 'cancelled',
+            $this->appointment->appointment_date->isToday() => 'reminder',
+            default => 'confirmed',
+        };
+    }
 }; ?>
 
 <div>
@@ -308,6 +342,7 @@ class extends Component
 
         {{-- Action Buttons --}}
         <div class="flex flex-wrap gap-2">
+            @include('partials.sms-button')
             @if ($appointment->status === 'scheduled')
                 <flux:button variant="primary" wire:click="confirmAppointment" wire:loading.attr="disabled" wire:target="confirmAppointment">
                     {{ __('Confirm') }}
@@ -328,6 +363,8 @@ class extends Component
             @endif
         </div>
     </div>
+
+    @include('partials.sms-modal')
 
     @error('action')
         <flux:callout variant="warning" icon="exclamation-triangle" class="mb-6" :heading="$message" />

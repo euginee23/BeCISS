@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\CapitalizesWords;
 use App\Concerns\HasActivityLogs;
+use App\Services\Sms\PhoneNumber;
 use Database\Factories\ResidentFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -218,6 +219,18 @@ class Resident extends Model
         ]);
 
         return implode(' ', $parts);
+    }
+
+    /**
+     * The contact number as a sendable Philippine mobile number
+     * (+639XXXXXXXXX), or null when there is none or it is not a mobile
+     * number, so landlines and stray digits are never texted.
+     */
+    public function smsNumber(): ?string
+    {
+        $number = PhoneNumber::toE164($this->contact_number, (string) config('sms.country_code', '63'));
+
+        return $number !== null && preg_match('/^\+639\d{9}$/', $number) ? $number : null;
     }
 
     /**

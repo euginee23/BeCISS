@@ -97,5 +97,6 @@ test('the newest payment is listed first', function () {
 
     Livewire::actingAs($this->admin)
         ->test('pages::reports.collections')
+        ->set('from', now()->subDay()->toDateString())
         ->assertSeeInOrder(['OR-LATEST', 'OR-EARLIER']);
 });

@@ -46,6 +46,7 @@ class ActivityLog extends Model
         'confirmed' => 'Confirmed',
         'cancelled' => 'Cancelled',
         'no_show' => 'Marked No Show',
+        'sms_sent' => 'Sent SMS',
     ];
 
     /**
