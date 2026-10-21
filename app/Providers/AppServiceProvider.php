@@ -41,7 +41,12 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
+        /**
+         * Strict passwords are opted into separately from APP_ENV, so the
+         * live site can run in production without forcing residents into
+         * 12-character passwords with symbols.
+         */
+        Password::defaults(fn (): ?Password => config('auth.strict_passwords')
             ? Password::min(12)
                 ->mixedCase()
                 ->letters()

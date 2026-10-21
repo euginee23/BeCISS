@@ -114,4 +114,17 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Strict Passwords
+    |--------------------------------------------------------------------------
+    |
+    | When true, new and changed passwords need at least 12 characters with
+    | mixed case, a number and a symbol, and must not appear in known data
+    | leaks. Kept off by default so residents can register easily.
+    |
+    */
+
+    'strict_passwords' => (bool) env('AUTH_STRICT_PASSWORDS', false),
+
 ];
