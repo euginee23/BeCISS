@@ -193,7 +193,7 @@ class extends Component {
 }; ?>
 
 <div>
-    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between print:hidden">
+    <div class="mb-6 flex flex-col gap-4 print:hidden">
         <div>
             <flux:heading size="xl">{{ __('Collection Report') }}</flux:heading>
             <flux:text class="mt-1 text-zinc-500">{{ __('Official receipts issued for certificates, blotter reports and appointments.') }}</flux:text>
@@ -274,7 +274,7 @@ class extends Component {
     </div>
 
     {{-- OR listing --}}
-    <div class="mb-6 rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 overflow-x-auto">
+    <div class="mb-6 rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 overflow-x-auto px-4">
         <flux:table>
             <flux:table.columns>
                 <flux:table.column>{{ __('Date Paid') }}</flux:table.column>

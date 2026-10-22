@@ -190,7 +190,7 @@ class extends Component
 
     <flux:error name="delete" />
 
-    <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-x-auto">
+    <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-x-auto px-4">
         <flux:table>
             <flux:table.columns>
                 <flux:table.column>{{ __('Service') }}</flux:table.column>
@@ -212,13 +212,15 @@ class extends Component
                             </div>
                             <div class="text-xs text-zinc-500 max-w-md truncate">{{ $service->description }}</div>
                         </flux:table.cell>
-                        <flux:table.cell class="font-mono">
+                        <flux:table.cell class="whitespace-nowrap">
                             @if ($service->slug === Service::COMPLAINT)
-                                <flux:link href="{{ route('admin.settings.service-fees') }}" wire:navigate class="font-sans text-sm">{{ __('Blotter Report fee') }}</flux:link>
+                                <flux:link href="{{ route('admin.settings.service-fees') }}" wire:navigate class="text-sm">{{ __('Blotter Report fee') }}</flux:link>
                             @elseif ($service->slug === Service::CERTIFICATE_VISIT)
-                                <span class="font-sans text-sm text-zinc-500">{{ __('Per certificate') }}</span>
+                                <span class="text-zinc-500">{{ __('Per certificate') }}</span>
+                            @elseif ((float) $service->fee > 0)
+                                <span class="font-mono">₱{{ number_format((float) $service->fee, 2) }}</span>
                             @else
-                                {{ (float) $service->fee > 0 ? '₱'.number_format((float) $service->fee, 2) : __('Free') }}
+                                <span class="text-zinc-500">{{ __('Free') }}</span>
                             @endif
                         </flux:table.cell>
                         <flux:table.cell>
@@ -242,9 +244,12 @@ class extends Component
                                 <flux:button variant="ghost" size="sm" icon="pencil" wire:click="openEditModal({{ $service->id }})">
                                     {{ __('Edit') }}
                                 </flux:button>
-                                @unless ($service->is_system)
+                                @if ($service->is_system)
+                                    {{-- Keeps Edit lined up with the rows that have a delete button. --}}
+                                    <div class="size-8" aria-hidden="true"></div>
+                                @else
                                     <flux:button variant="ghost" size="sm" icon="trash" wire:click="delete({{ $service->id }})" wire:confirm="{{ __('Delete this service? Past appointments keep their label.') }}" />
-                                @endunless
+                                @endif
                             </div>
                         </flux:table.cell>
                     </flux:table.row>

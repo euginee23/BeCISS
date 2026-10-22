@@ -336,7 +336,7 @@ class extends Component {
                 <option value="senior">{{ __('60+ (Senior)') }}</option>
             </flux:select>
 
-            <flux:select wire:model.live="voter" class="max-w-36">
+            <flux:select wire:model.live="voter" class="max-w-48">
                 <option value="">{{ __('Voters & Non-voters') }}</option>
                 <option value="yes">{{ __('Voters') }}</option>
                 <option value="no">{{ __('Non-voters') }}</option>
@@ -350,7 +350,7 @@ class extends Component {
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model.live="account" class="max-w-44">
+            <flux:select wire:model.live="account" class="max-w-60">
                 <option value="">{{ __('With or without account') }}</option>
                 <option value="with">{{ __('Has online account') }}</option>
                 <option value="without">{{ __('No online account') }}</option>

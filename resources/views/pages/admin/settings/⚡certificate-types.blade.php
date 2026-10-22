@@ -279,7 +279,7 @@ class extends Component
         </flux:button>
     </div>
 
-    <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-x-auto">
+    <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 overflow-x-auto px-4">
         <flux:table>
             <flux:table.columns>
                 <flux:table.column>{{ __('Type') }}</flux:table.column>
@@ -297,8 +297,12 @@ class extends Component
                             <div class="font-medium text-zinc-900 dark:text-white">{{ $type->name }}</div>
                             <div class="text-xs text-zinc-500">{{ trans_choice(':count certificate|:count certificates', $type->certificates_count) }}</div>
                         </flux:table.cell>
-                        <flux:table.cell class="font-mono">
-                            {{ $type->isFree() ? __('Free') : '₱'.number_format((float) $type->fee, 2) }}
+                        <flux:table.cell class="whitespace-nowrap">
+                            @if ($type->isFree())
+                                <span class="text-zinc-500">{{ __('Free') }}</span>
+                            @else
+                                <span class="font-mono">₱{{ number_format((float) $type->fee, 2) }}</span>
+                            @endif
                         </flux:table.cell>
                         <flux:table.cell>
                             @if ($type->hasTemplate())
