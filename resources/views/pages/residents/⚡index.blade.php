@@ -4,6 +4,7 @@ use App\Mail\RegistrationRejected;
 use App\Mail\ResidentApproved;
 use App\Models\ActivityLog;
 use App\Models\Resident;
+use App\Models\User;
 use App\Notifications\ResidentNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -55,6 +56,12 @@ class extends Component {
 
     #[Url]
     public string $sortDirection = 'asc';
+
+    /**
+     * Confirmation shown after approving a registration, so staff know the
+     * resident moved to the Registry rather than disappeared.
+     */
+    public ?string $approvalMessage = null;
 
     public bool $showDeleteModal = false;
 
@@ -146,6 +153,17 @@ class extends Component {
     public function approveResident(int $id): void
     {
         $resident = Resident::with('user')->findOrFail($id);
+
+        /**
+         * A page left open in another tab can still show a registration that
+         * was approved since; say so instead of approving and emailing twice.
+         */
+        if (! $resident->isPending()) {
+            $this->approvalMessage = __(':name is already approved and is in the Registry.', ['name' => $resident->full_name]);
+
+            return;
+        }
+
         $resident->update([
             'status' => 'approved',
             'approved_at' => now(),
@@ -169,6 +187,8 @@ class extends Component {
             body: 'Your registration has been approved. You now have full access to BeCISS.',
             url: route('dashboard'),
         ));
+
+        $this->approvalMessage = __(':name was approved and is now in the Registry.', ['name' => $resident->full_name]);
     }
 
     public function openRejectModal(int $id): void
@@ -219,6 +239,24 @@ class extends Component {
             $this->residentToReject = null;
             $this->rejectionReason = '';
         }
+    }
+
+    /**
+     * Resident accounts that have not reached the review step yet: they still
+     * need to verify their email or fill in their profile. Listed so staff can
+     * see someone has started registering, even though there is nothing to
+     * approve until the profile is submitted.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, User>
+     */
+    #[Computed]
+    public function unfinishedRegistrations()
+    {
+        return User::query()
+            ->where('role', 'resident')
+            ->doesntHave('resident')
+            ->latest()
+            ->get();
     }
 
     #[Computed]
@@ -375,6 +413,14 @@ class extends Component {
 
     @if($tab === 'pending')
         {{-- ===== PENDING REGISTRATIONS VIEW ===== --}}
+        @if ($approvalMessage)
+            <flux:callout variant="success" icon="check-circle" class="mb-4" :heading="$approvalMessage">
+                <flux:callout.text>
+                    <flux:link wire:click="$set('tab', 'all')" class="cursor-pointer">{{ __('Open the Registry') }}</flux:link>
+                </flux:callout.text>
+            </flux:callout>
+        @endif
+
         @forelse ($this->residents as $resident)
             <div wire:key="pending-{{ $resident->id }}" class="mb-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-5">
                 <div class="flex flex-col sm:flex-row sm:items-start gap-4">
@@ -445,6 +491,36 @@ class extends Component {
         @if($this->residents->hasPages())
             <div class="mt-4">
                 {{ $this->residents->links() }}
+            </div>
+        @endif
+
+        @if ($this->unfinishedRegistrations->isNotEmpty())
+            <div class="mt-8">
+                <flux:heading size="lg">{{ __('Still finishing sign-up') }}</flux:heading>
+                <flux:text class="mt-1 text-zinc-500">
+                    {{ __('These people created an account but have not submitted their resident profile yet. They appear above for approval once they do.') }}
+                </flux:text>
+
+                <div class="mt-4 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white px-5 dark:divide-zinc-700 dark:border-zinc-700 dark:bg-zinc-900">
+                    @foreach ($this->unfinishedRegistrations as $account)
+                        <div wire:key="unfinished-{{ $account->id }}" class="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="flex min-w-0 items-center gap-3">
+                                <flux:avatar size="sm" name="{{ $account->name }}" />
+                                <div class="min-w-0">
+                                    <div class="font-medium text-zinc-900 dark:text-white">{{ $account->name }}</div>
+                                    <div class="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                                        {{ $account->email }} &middot; {{ __('Signed up') }} {{ $account->created_at->diffForHumans() }}
+                                    </div>
+                                </div>
+                            </div>
+                            @if ($account->email_verified_at)
+                                <flux:badge size="sm" color="blue" class="self-start sm:self-auto">{{ __('Filling in profile') }}</flux:badge>
+                            @else
+                                <flux:badge size="sm" color="zinc" class="self-start sm:self-auto">{{ __('Email not verified') }}</flux:badge>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
             </div>
         @endif
     @else
